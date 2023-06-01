@@ -1,2 +1,19 @@
 # Geochemical Analysis
 Este é o conjunto de análises estatísticas realizadas em dados de sedimento de corrente e concentrado de bateia do Projeto Platina-CPRM durante meu mestrado na UNICAMP. 
+
+
+#### Alguns técnicas utilizadas
+
+- Medidas de posição
+- Medidas de espalhamento
+- Remoção de outliers
+- Box-Plots
+- Gráfico de dispersão
+- QQ-Plots
+- Gráfico de densidade
+- Teste de Normalidade de Shapiro-Wilk
+- Matriz de correlação
+- Regressão Linear
+- Análise de Componentes Principais
+
+
