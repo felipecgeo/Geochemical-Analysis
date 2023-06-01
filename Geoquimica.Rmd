@@ -1,0 +1,2425 @@
+---
+title: "Geochemical Analysis"
+output: "geochemical analysis"
+Written by: Felipe Câncio 
+felipeccogeo@gmail.com
+---
+#Diretório e importando bibliotecas
+```{r}
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data")
+getwd()
+library("readxl")
+library("dplyr")
+library('ggplot2')
+library("ggpubr")
+library('car')
+library('fpp')
+library('lm.beta')
+library("scatterplot3d")
+library(stats)
+library(dplyr)
+library(corrplot)
+library(Hmisc)
+library(tidyr)
+library(factoextra)
+library(sf)
+library(maptools)
+library(raster)
+library(spatstat)
+library(RStoolbox)#raster pca
+library(sfheaders)
+library(kableExtra) # para tabelas
+```
+
+
+####DADOS CORRIGIDOS####
+
+#Pontos unidos
+```{r}
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data")
+
+Dados_Unidos=read_excel("Juntos.xlsx")
+Dados_Unidos_numeric=Dados_Unidos[,c(2:7)]
+Dados_Unidos_numeric_lATLONG=Dados_Unidos[,c(1:9)]
+
+##Dados_normalizados####
+Dados_Normalized=Dados_Unidos_numeric 
+  Dados_Normalized$CO=(Dados_Normalized[,1]  - min(Dados_Normalized[,1], na.rm=T))/(max(Dados_Normalized[,1], na.rm=T)-min(Dados_Normalized[,1], na.rm=T))
+  Dados_Normalized$CR=(Dados_Normalized[,2]  - min(Dados_Normalized[,2], na.rm=T))/(max(Dados_Normalized[,2], na.rm=T)-min(Dados_Normalized[,2], na.rm=T))
+  Dados_Normalized$NI=(Dados_Normalized[,3] - min(Dados_Normalized[,3], na.rm=T))/(max(Dados_Normalized[,3], na.rm=T)-min(Dados_Normalized[,3], na.rm=T))
+  Dados_Normalized$ZN=(Dados_Normalized[,4]  - min(Dados_Normalized[,4], na.rm=T))/(max(Dados_Normalized[,4], na.rm=T)-min(Dados_Normalized[,4], na.rm=T))
+  Dados_Normalized$AU=(Dados_Normalized[,5]  - min(Dados_Normalized[,5], na.rm=T))/(max(Dados_Normalized[,5], na.rm=T)-min(Dados_Normalized[,5], na.rm=T))
+  Dados_Normalized$CU=(Dados_Normalized[,6]  - min(Dados_Normalized[,6], na.rm=T))/(max(Dados_Normalized[,6], na.rm=T)-min(Dados_Normalized[,6], na.rm=T))
+# trocando de lista para numerico ( nao a classe "class", mas o modo "mode")
+Dados_Normalized$CO=as.numeric(unlist(Dados_Normalized$CO))
+Dados_Normalized$CR=as.numeric(unlist(Dados_Normalized$CR))
+Dados_Normalized$NI=as.numeric(unlist(Dados_Normalized$NI))
+Dados_Normalized$ZN=as.numeric(unlist(Dados_Normalized$ZN))
+Dados_Normalized$AU=as.numeric(unlist(Dados_Normalized$AU))
+Dados_Normalized$CU=as.numeric(unlist(Dados_Normalized$CU))
+#Dado normalizado sem Na
+Dados_Normal_semNA=na.omit(Dados_Normalized) # tive de fazer de novo pois se removia as linhas que continham NA obviamente os valores das colunas se alteravam
+  Dados_Normal_semNA$CO=(Dados_Normal_semNA[,1]  - min(Dados_Normal_semNA[,1], na.rm=T))/(max(Dados_Normal_semNA[,1], na.rm=T)-min(Dados_Normal_semNA[,1], na.rm=T))
+  Dados_Normal_semNA$CR=(Dados_Normal_semNA[,2]  - min(Dados_Normal_semNA[,2], na.rm=T))/(max(Dados_Normal_semNA[,2], na.rm=T)-min(Dados_Normal_semNA[,2], na.rm=T))
+  Dados_Normal_semNA$NI=(Dados_Normal_semNA[,3] - min(Dados_Normal_semNA[,3], na.rm=T))/(max(Dados_Normal_semNA[,3], na.rm=T)-min(Dados_Normal_semNA[,3], na.rm=T))
+  Dados_Normal_semNA$ZN=(Dados_Normal_semNA[,4]  - min(Dados_Normal_semNA[,4], na.rm=T))/(max(Dados_Normal_semNA[,4], na.rm=T)-min(Dados_Normal_semNA[,4], na.rm=T))
+  Dados_Normal_semNA$AU=(Dados_Normal_semNA[,5]  - min(Dados_Normal_semNA[,5], na.rm=T))/(max(Dados_Normal_semNA[,5], na.rm=T)-min(Dados_Normal_semNA[,5], na.rm=T))
+  Dados_Normal_semNA$CU=(Dados_Normal_semNA[,6]  - min(Dados_Normal_semNA[,6], na.rm=T))/(max(Dados_Normal_semNA[,6], na.rm=T)-min(Dados_Normal_semNA[,6], na.rm=T))
+  # trocando de lista para numerico ( nao a classe "class", mas o modo "mode")
+Dados_Normal_semNA$CO=as.numeric(unlist(Dados_Normal_semNA$CO))
+Dados_Normal_semNA$CR=as.numeric(unlist(Dados_Normal_semNA$CR))
+Dados_Normal_semNA$NI=as.numeric(unlist(Dados_Normal_semNA$NI))
+Dados_Normal_semNA$ZN=as.numeric(unlist(Dados_Normal_semNA$ZN))
+Dados_Normal_semNA$AU=as.numeric(unlist(Dados_Normal_semNA$AU))
+Dados_Normal_semNA$CU=as.numeric(unlist(Dados_Normal_semNA$CU))
+
+
+
+Dados_Normalized_lATLONG=Dados_Normalized
+Dados_Normalized_lATLONG$POINT_X=Dados_Unidos_numeric_lATLONG$POINT_X
+Dados_Normalized_lATLONG$POINT_Y=Dados_Unidos_numeric_lATLONG$POINT_Y
+#dado normalizado com coordenadas sem NA
+Dados_Normalized_lATLONG_SemNA=na.omit(Dados_Normalized_lATLONG)
+
+#os valores dos elementos não alteraram, foram apenas colocados em uma única ponto. Se alterou a quantidade de Na e se incluiu o elemento Au. Para conferir, é só ver o summary:
+#summary(final_numeric)
+#summary(teste_numeric)
+#summary(Dados_Unidos_numeric)
+
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+
+sf_Dados_Unidos_numeric_lATLONG=st_as_sf(x=Dados_Unidos_numeric_lATLONG,coords = c("POINT_X", "POINT_Y"), crs= projcrs) 
+plot(sf_Dados_Unidos_numeric_lATLONG)
+
+#setwd("C:/Users/pc/Desktop/td/sf_write")#exportar
+#st_write(sf_Dados_Unidos_numeric_lATLONG, dsn= "DELTEST10.shp", driver= "ESRI Shapefile")
+
+
+```
+
+Regressão linear simoles com boxplot NiCr e multipla
+```{r}
+
+RL_NixCr=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CR)
+#sem zoom
+par(fig=c(0,0.8,0,0.8)) 
+plot(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CR, xlab="Cr",ylab="Ni")
+abline(RL_NixCr,col='red')
+
+par(fig=c(0,0.8,0.35,1), new=TRUE)
+boxplot(Dados_Unidos_numeric$CR, horizontal=TRUE, axes=FALSE, col='green')
+
+par(fig=c(0.60,1,0,0.8),new=TRUE)
+boxplot(Dados_Unidos_numeric$NI, axes=FALSE, col='orange')
+mtext("Ni x Cr", side=3, outer=TRUE, line=-5.5)
+##-
+par(fig=c(0,0.8,0,0.8)) 
+plot(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CR, xlab="Cr", xlim=c(0,9600),ylab="Ni")
+abline(RL_NixCr,col='red')
+
+par(fig=c(0,0.8,0.35,1), new=TRUE)
+boxplot(Dados_Unidos_numeric$CR, horizontal=TRUE, axes=FALSE, col='green', ylim=c(0,9600))
+
+par(fig=c(0.60,1,0,0.8),new=TRUE)
+boxplot(Dados_Unidos_numeric$NI, axes=FALSE, col='orange')
+mtext("Ni x Cr", side=3, outer=TRUE, line=-5.5)
+
+summary(RL_NixCr)
+#---zoom1
+par(fig=c(0,0.8,0,0.8)) 
+plot(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CR, xlab="Cr", xlim=c(0,1000),ylab="Ni")
+abline(RL_NixCr,col='red')
+
+par(fig=c(0,0.8,0.35,1), new=TRUE)
+boxplot(Dados_Unidos_numeric$CR, horizontal=TRUE, axes=FALSE, col='green', ylim=c(0,1000))
+
+par(fig=c(0.60,1,0,0.8),new=TRUE)
+boxplot(Dados_Unidos_numeric$NI, axes=FALSE, col='orange',ylim=c(0,1000))
+mtext("Ni x Cr", side=3, outer=TRUE, line=-5.5)
+#-------zoom2
+par(fig=c(0,0.8,0,0.8)) 
+plot(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CR, xlab="Cr", xlim=c(0,1000),ylim=c(0,2200),ylab="Ni")
+abline(RL_NixCr,col='red')
+
+par(fig=c(0,0.8,0.35,1), new=TRUE)
+boxplot(Dados_Unidos_numeric$CR, horizontal=TRUE, axes=FALSE, col='green', ylim=c(0,1000))
+
+par(fig=c(0.60,1,0,0.8),new=TRUE)
+boxplot(Dados_Unidos_numeric$NI, axes=FALSE, col='orange',ylim=c(0,2200))
+mtext("Ni x Cr", side=3, outer=TRUE, line=-5.5)
+#-------zoom3
+par(fig=c(0,0.8,0,0.8)) 
+plot(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CR, xlab="Cr", xlim=c(0,1000),ylim=c(0,100),ylab="Ni")
+abline(RL_NixCr,col='red')
+
+par(fig=c(0,0.8,0.35,1), new=TRUE)
+boxplot(Dados_Unidos_numeric$CR, horizontal=TRUE, axes=FALSE, col='green', ylim=c(0,1000))
+
+par(fig=c(0.60,1,0,0.8),new=TRUE)
+boxplot(Dados_Unidos_numeric$NI, axes=FALSE, col='orange',ylim=c(0,100))
+mtext("Ni x Cr", side=3, outer=TRUE, line=-5.5)
+
+#RL multipla
+teste=lm(Dados_Unidos_numeric$NI ~ Dados_Unidos_numeric$CO + Dados_Unidos_numeric$CR)
+a=scatterplot3d(Dados_Unidos_numeric$NI ~ Dados_Unidos_numeric$CO + Dados_Unidos_numeric$CR, pch=16,angle=20,color='steelblue', box=F)
+a$plane3d(teste, draw_polygon = T)
+
+a=scatterplot3d(Dados_Unidos_numeric$NI ~ Dados_Unidos_numeric$CO + Dados_Unidos_numeric$CR, pch=16,angle=30,color='steelblue', box=F)
+a$plane3d(teste, draw_polygon = T)
+
+a=scatterplot3d(Dados_Unidos_numeric$NI ~ Dados_Unidos_numeric$CO + Dados_Unidos_numeric$CR, pch=16,angle=45,color='steelblue', box=F)
+a$plane3d(teste, draw_polygon = T)
+```
+Tenho que ver o que é 
+```{R}
+
+
+
+#-----
+hist(Dados_Unidos_numeric$CR, col= 'green')
+qqnorm(Dados_Unidos_numeric$CR)
+qqline(Dados_Unidos_numeric$CR,col='red')
+
+
+#ggplot qquantikle
+
+ggqqplot(Dados_Unidos_numeric$CR, ylab="Cr Quantiles")
+
+shapiro.test(Dados_Unidos_numeric$CR)
+
+ggdensity(Dados_Unidos_numeric$CR,col='green', xlab = "Cr", add = "mean",fill = "green")
+
+ggdensity(Dados_Unidos_numeric$CR)
+
+
+
+```
+#dividindo dados
+```{r}
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data")
+a=read_excel("teste.xls")
+#outro jeito de filtar as coluas seria novodataframe=final[,c(3,6,8,9)], nesse caso estamos escolhendo apenas as colunas 3,6,8 e 9
+
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+
+
+b=split(a,f=a$CLASSE_AMO)#dividindo por classe de amostra
+d=split(a,f=a$ABERTURA)
+e=split(a,f=a$AMOSTRA)
+
+b_concentrado=b$`Concentrado de bateia`[,c(4,27,28,29,30,31,32,33,34)]
+nrow(b_concentrado)
+
+b_sedimento=b$`Sedimento de corrente`[,c(4,27,28,29,30,31,32,33,34)]
+nrow(b_sedimento)
+c=merge(b_concentrado,b_sedimento,by="AMOSTRA")
+
+#
+b=split(a,f=a$CLASSE_AMO)
+b_concentrado=b$`Concentrado de bateia`[,c(27,28,29,30,31,32,33,34)]
+boxplot(b_concentrado$CR)
+summary(b_concentrado$CR)
+nrow(b_concentrado)
+
+b_sedimento=b$`Sedimento de corrente`[,c(27,28,29,30,31,32,33,34)]
+boxplot(b_sedimento$CR)
+summary(b_sedimento$CR)
+nrow(b_sedimento)
+
+sf_b_concentrado=st_as_sf(x=  b_concentrado,coords = c("POINT_X", "POINT_Y"), crs= projcrs) %>% plot()
+sf_b_sedimento=st_as_sf(x=  b_sedimento,coords = c("POINT_X", "POINT_Y"), crs= projcrs)%>% plot()
+
+#setwd("C:/Users/pc/Desktop/td/sf_write")#exportar
+#st_write(sf_b_concentrado, dsn= "concentrado.shp", driver= "ESRI Shapefile") # não ficou legal, melhor separar os elementos 
+```
+
+
+#Tebela sem Zeros - Trocandos por Na
+```{r}
+Dados_Unidos_numeric_semZero=Dados_Unidos_numeric
+summary(Dados_Unidos_numeric_semZero) # observar que o valor mínimo é zero
+Dados_Unidos_numeric_semZero[Dados_Unidos_numeric_semZero==0]=NA
+summary(Dados_Unidos_numeric_semZero) # o valor mínimo agora != 0
+
+```
+#Tirando os NA
+```{r}
+Dados_Unidos_numeric_semNA=na.omit(Dados_Unidos_numeric) # essa função elimina as linhas que contem NA
+length(Dados_Unidos_numeric_semNA$NI) # Tenho 2464 linhas com todos os dados
+sum(is.na(Dados_Unidos_numeric_semNA))
+
+# vou ver se tirando o Au muda o total de linhas disponíveis 
+a=Dados_Unidos_numeric_semNA[,c(1:4,6)]
+a_numeric_semNA=na.omit(a) # essa função elimina as linhas que contem NA
+length(a$NI) # Tenho 2464 linhas com todos os dados
+sum(is.na(a))
+
+# Manteve o número de dados, ainda tenho 2464 disponíveis, não tem motivo para tirar o AU nesse caso
+
+#summary(Dados_Unidos_numeric), o número de Na do Cr é maior que o do Ni, eu posso predizer os valores de Cr tendo em vista o Ni e outros elementos por uma relação linear
+
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data\\Agosto")
+
+#Retirando apenas as linhas do Au com zero
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_lATLONG
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_semNA[,c(1,6,8,9)]
+Dados_Unidos_numeric_semNA=na.omit(Dados_Unidos_numeric_semNA)
+
+sf_Dados_Unidos_numeric_lATLONG_semNa=st_as_sf(x=Dados_Unidos_numeric_semNA, coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+#st_write(sf_Dados_Unidos_numeric_lATLONG_semNa, dsn= "LB_Au.shp", driver= "ESRI Shapefile")
+#Retirando apenas as linhas do Co com zero
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_lATLONG
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_semNA[,c(1,2,8,9)]
+Dados_Unidos_numeric_semNA=na.omit(Dados_Unidos_numeric_semNA)
+
+sf_Dados_Unidos_numeric_lATLONG_semNa=st_as_sf(x=Dados_Unidos_numeric_semNA, coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+#st_write(sf_Dados_Unidos_numeric_lATLONG_semNa, dsn= "LB_Co.shp", driver= "ESRI Shapefile")
+#Retirando apenas as linhas do Zn com zero
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_lATLONG
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_semNA[,c(1,5,8,9)]
+Dados_Unidos_numeric_semNA=na.omit(Dados_Unidos_numeric_semNA)
+
+sf_Dados_Unidos_numeric_lATLONG_semNa=st_as_sf(x=Dados_Unidos_numeric_semNA, coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+#st_write(sf_Dados_Unidos_numeric_lATLONG_semNa, dsn= "LB_Zn.shp", driver= "ESRI Shapefile")
+#Retirando apenas as linhas do CU com zero
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_lATLONG
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_semNA[,c(1,7,8,9)]
+Dados_Unidos_numeric_semNA=na.omit(Dados_Unidos_numeric_semNA)
+
+sf_Dados_Unidos_numeric_lATLONG_semNa=st_as_sf(x=Dados_Unidos_numeric_semNA, coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+#st_write(sf_Dados_Unidos_numeric_lATLONG_semNa, dsn= "LB_Cu.shp", driver= "ESRI Shapefile")
+#Não fiz isso para as linhas de Ni e Cr pq posteriormente eu prediz os dados e depois exportei
+
+
+Dados_Unidos_numeric_semNA=na.omit(Dados_Unidos_numeric)
+
+```
+#Separação dos outliers 
+```{r} 
+###mostrando o boxplot sem varios outliers -boxplot.stats
+
+#https://www.youtube.com/watch?v=21K9quDZCYU&ab_channel=StatisticsGlobe
+
+
+#######Para NI####
+Ni_sem_outliers=Dados_Unidos_numeric$NI[!Dados_Unidos_numeric$NI %in% boxplot.stats(Dados_Unidos_numeric$NI)$out]    # Remove outliers
+#o " ! " é um operado booleano que significa não
+# O %in% é utilizado para identificar um elemento
+
+Ni_outliers=boxplot.stats(Dados_Unidos_numeric$NI)$out # Outliers do Ni
+
+
+length(Ni_outliers)  #numero de outliers 
+length(Ni_sem_outliers) # Count samples without outliers
+
+par(mfrow = c(1, 3))
+boxplot(Ni_sem_outliers) #  Create boxplot without outliers
+boxplot(Ni_outliers)     #esses sao os outliers
+boxplot(Dados_Unidos_numeric$NI) #normal para comparação
+
+
+#######################Para CO#########
+Co_sem_outliers=Dados_Unidos_numeric$CO[!Dados_Unidos_numeric$CO %in% boxplot.stats(Dados_Unidos_numeric$CO)$out]
+
+Co_outliers=boxplot.stats(Dados_Unidos_numeric$CO)$out
+
+par(mfrow = c(1, 3))
+boxplot(Co_sem_outliers) # esses sao os outliers
+boxplot(Co_outliers)
+boxplot(Dados_Unidos_numeric$CO)#normal para comparação
+
+#######################Para Cu#########
+Cu_sem_outliers=Dados_Unidos_numeric$CU[!Dados_Unidos_numeric$CU %in% boxplot.stats(Dados_Unidos_numeric$CU)$out]
+
+Cu_outliers=boxplot.stats(Dados_Unidos_numeric$CU)$out
+
+par(mfrow = c(1, 3))
+boxplot(Cu_sem_outliers) 
+boxplot(Cu_outliers)
+boxplot(Dados_Unidos_numeric$CU)#normal para comparação
+
+#######################Para Zn#########
+Zn_sem_outliers=Dados_Unidos_numeric$ZN[!Dados_Unidos_numeric$ZN %in% boxplot.stats(Dados_Unidos_numeric$ZN)$out]
+
+Zn_outliers=boxplot.stats(Dados_Unidos_numeric$ZN)$out
+
+par(mfrow = c(1, 3))
+boxplot(Zn_sem_outliers) 
+boxplot(Zn_outliers)
+boxplot(Dados_Unidos_numeric$ZN)
+
+
+##########para Cr########
+Cr_sem_outliers=Dados_Unidos_numeric$CR[!Dados_Unidos_numeric$CR %in% boxplot.stats(Dados_Unidos_numeric$CR)$out]
+
+Cr_outliers=boxplot.stats(Dados_Unidos_numeric$CR)$out
+
+par(mfrow = c(2, 2))
+boxplot(Cr_sem_outliers) 
+boxplot(Cr_outliers)
+boxplot(Dados_Unidos_numeric$CR)
+
+####Para Au####
+Au_sem_outliers=Dados_Unidos_numeric$AU[!Dados_Unidos_numeric$AU %in% boxplot.stats(Dados_Unidos_numeric$AU)$out]
+
+Au_outliers=boxplot.stats(Dados_Unidos_numeric$AU)$out
+
+par(mfrow = c(2, 2))
+boxplot(Au_sem_outliers) 
+boxplot(Au_outliers)
+boxplot(Dados_Unidos_numeric$AU)
+
+####Juntando em uma lista
+final_sem_outliers=list(Ni_sem_outliers,Co_sem_outliers,Cu_sem_outliers,Zn_sem_outliers,Cr_sem_outliers,Au_sem_outliers)
+names(final_sem_outliers)= c("NI","Co","Cu","Zn","Cr","Au")
+
+final_outliers=list(Ni_outliers,Co_outliers,Cu_outliers,Zn_outliers,Cr_outliers,Au_outliers)
+names(final_outliers)= c("NI","Co","Cu","Zn","Cr","Au")
+
+##Retirando o zero####
+Ni_sem_outliersEZero=Ni_sem_outliers
+Ni_sem_outliersEZero[Ni_sem_outliersEZero==0]=NA
+
+Co_sem_outliersEZero=Co_sem_outliers
+Co_sem_outliersEZero[Co_sem_outliers==0]=NA
+
+Cu_sem_outliersEZero=Cu_sem_outliers
+Cu_sem_outliersEZero[Cu_sem_outliers==0]=NA
+
+Zn_sem_outliersEZero=Zn_sem_outliers
+Zn_sem_outliersEZero[Zn_sem_outliers==0]=NA
+
+Cr_sem_outliersEZero=Cr_sem_outliers
+Cr_sem_outliersEZero[Cr_sem_outliers==0]=NA
+
+Au_sem_outliersEZero=Au_sem_outliers
+Au_sem_outliersEZero[Au_sem_outliers==0]=NA
+
+
+
+```
+
+
+
+#Estatística descritiva Basica
+```{r}
+a=Dados_Unidos_numeric %>% 
+  summary() %>% 
+  kbl(caption = "Summary of geochemistry  attributes") %>% 
+  kable_classic_2(full_width = F, html_font = "Cambria")
+
+
+#Boxplot(Ni)
+teste=list(final_sem_outliers$NI,Dados_Unidos_numeric$NI)
+names(teste)=c("Ni sem outliers","NI")
+boxplot(teste, horizontal=TRUE, col = 'orange',yaxt="n")#,ylim = c(0, 100)
+title(ylab="Ni", line=0, cex.lab=1.2)
+
+boxplot(Dados_Unidos_numeric$NI, horizontal=TRUE, ylab="Ni")
+boxplot(final_sem_outliers$NI,horizontal=TRUE,ylab="Ni sem outliers")
+
+#Boxplot(Co)
+teste=list(final_sem_outliers$Co,Dados_Unidos_numeric$CO)
+names(teste)=c("Co without outliers","Co")
+boxplot(teste, horizontal=TRUE,col = 'red',yaxt="n")
+title(ylab="Co", line=0, cex.lab=1.2, family="Calibri Light")
+
+#Boxplot(Cr)
+teste=list(final_sem_outliers$Cr,Dados_Unidos_numeric$CR)
+names(teste)=c("Cr sem outliers","Cr")
+boxplot(teste, horizontal=TRUE,col="green",yaxt="n")
+title(ylab="Cr", line=0, cex.lab=1.2, family="Calibri Light")
+
+#Boxplot(Zn)
+teste=list(final_sem_outliers$Zn,Dados_Unidos_numeric$ZN)
+names(teste)=c("Zn sem outliers","Zn")
+boxplot(teste, horizontal=TRUE,col = 'blue',  yaxt="n")
+title(ylab="Zn", line=0, cex.lab=1.0, family="Calibri Light")
+
+#Boxplot(Cu)
+teste=list(final_sem_outliers$Cu,Dados_Unidos_numeric$CU)
+names(teste)=c("Cu sem outliers","Cu")
+boxplot(teste, horizontal=TRUE,col = 'yellow',  yaxt="n")
+title(ylab="Cu", line=0, cex.lab=1.0, family="Calibri Light")
+
+#Boxplot para o Au
+teste=list(final_sem_outliers$Au,Dados_Unidos_numeric$AU)
+names(teste)=c("Au sem outliers","Au")
+boxplot(teste, horizontal=TRUE,col = 'pink',  yaxt="n")
+title(ylab="Au", line=0, cex.lab=1.0, family="Calibri Light")
+
+
+
+###############3Não terminei daqui pra baixo.. era pra fazer tabela com os dado sem outliers
+
+boxplot(Dados_Unidos_numeric,main="Urânio ",names=c("CO", "CR", "NI", "ZN","AU","CU"), col="blue",ylab="ppm")
+
+
+boxplot(final_sem_outliers,main="Urânio ",names=c("Anglo", "UltramaficSVM", "SVMsmall", "Basin","s","6"), col="blue",ylab="ppm")
+a
+
+aa=as.matrix(final_sem_outliers)
+b=Cr_sem_outlierseZero%>% 
+  summary() %>% 
+  kbl(caption = "Sem outliers") %>% 
+  kable_classic_2(full_width = F, html_font = "Cambria")
+b
+
+
+ xlim = c(0.5, 3.5), ylim = c(0, 35),
+Cr_sem_outlierseZero   Ni_sem_outlierseZero Co_sem_outlierseZero Cu_sem_outlierseZero Zn_sem_outlierseZero
+aaa=list(Cr_sem_outlierseZero,Ni_sem_outlierseZero,Co_sem_outlierseZero)
+names(aaa)->c("a","b","C")
+p=merge(Cr_sem_outlierseZero,Ni_sem_outlierseZero)
+```
+
+#Testando normalidade
+```{r}
+#QQplots - testando em relação a uma distribuição normal
+#por aluma razão aqui não está mostrando as cores, porem é só jogar em outro chunk
+par(mfrow = c(2, 2))
+
+hist(Dados_Unidos_numeric$NI,col = 'orange')
+qqnorm(Dados_Unidos_numeric$NI,main = "Normal Q-Q Plot for Ni", ylab = "Ni Quantiles")
+qqline(Dados_Unidos_numeric$NI,col='red')
+
+hist(Dados_Unidos_numeric$CU,col = 'yellow')
+qqnorm(Dados_Unidos_numeric$CU,main = "Normal Q-Q Plot for Cu", ylab = "Cu Quantiles")
+qqline(Dados_Unidos_numeric$CU,col='red')
+
+hist(Dados_Unidos_numeric$CO,col = 'red')
+qqnorm(Dados_Unidos_numeric$CO,main = "Normal Q-Q Plot for Co", ylab = "Co Quantiles")
+qqline(Dados_Unidos_numeric$CO,col='red')
+
+par(mfrow = c(2, 2))
+hist(Dados_Unidos_numeric$ZN,col = 'blue')
+qqnorm(Dados_Unidos_numeric$ZN,main = "Normal Q-Q Plot for Zn", ylab = "Zn Quantiles")
+qqline(Dados_Unidos_numeric$ZN,col='red')
+
+hist(Dados_Unidos_numeric$CR, col= 'green')
+qqnorm(Dados_Unidos_numeric$CR,main = "Normal Q-Q Plot for Cr", ylab = "Cr Quantiles")
+qqline(Dados_Unidos_numeric$CR,col='red')
+
+hist(Dados_Unidos_numeric$AU, col= 'pink')
+qqnorm(Dados_Unidos_numeric$AU,main = "Normal Q-Q Plot for Au", ylab = "Au Quantiles")
+qqline(Dados_Unidos_numeric$AU,col='red')
+
+#ggplot qquantile
+ggqqplot(Dados_Unidos_numeric$NI, ylab="Ni Quantiles")
+ggqqplot(Dados_Unidos_numeric$CU, ylab="Cu Quantiles")
+ggqqplot(Dados_Unidos_numeric$CO, ylab="Co Quantiles")
+ggqqplot(Dados_Unidos_numeric$ZN, ylab="Zn Quantiles")
+ggqqplot(Dados_Unidos_numeric$CR, ylab="Cr Quantiles")
+ggqqplot(Dados_Unidos_numeric$AU, ylab="Au Quantiles")
+
+
+shapiro.test(Dados_Unidos_numeric$NI)
+shapiro.test(Dados_Unidos_numeric$CU)#
+shapiro.test(Dados_Unidos_numeric$CO)
+shapiro.test(Dados_Unidos_numeric$ZN) #
+shapiro.test(Dados_Unidos_numeric$CR)
+#shapiro.test(Dados_Unidos_numeric$AU)
+
+par(mfrow = c(3, 2))
+ggdensity(Dados_Unidos_numeric$NI,col = 'orange',  xlab = "Ni", add = "mean",fill = "orange")
+ggdensity(Dados_Unidos_numeric$CU,col = 'yellow', xlab = "Cu", add = "mean", fill = "yellow")
+ggdensity(Dados_Unidos_numeric$CO,col = 'red', xlab = "Co", add = "mean", fill = "red")
+
+par(mfrow = c(3, 2))
+ggdensity(Dados_Unidos_numeric$ZN,col = 'blue', xlab = "Zn", add = "mean",fill = "blue")
+ggdensity(Dados_Unidos_numeric$CR,col='green', xlab = "Cr", add = "mean",fill = "green")
+ggdensity(Dados_Unidos_numeric$AU,col='pink', xlab = "Cr", add = "mean",fill = "pink")
+
+```
+#Testando normalidade sem os outliers
+```{r}
+
+#####shapiro teste para todos os sem outliers
+#ggplot qquantile
+ggqqplot(Co_sem_outliers)
+ggqqplot(Ni_sem_outliers)
+ggqqplot(Zn_sem_outliers)
+ggqqplot(Cu_sem_outliers)
+ggqqplot(Cr_sem_outliers)
+ggqqplot(Au_sem_outliers)
+
+shapiro.test(final_sem_outliers$Co)
+shapiro.test(final_sem_outliers$Cu)
+shapiro.test(final_sem_outliers$NI)
+shapiro.test(final_sem_outliers$Zn)
+shapiro.test(final_sem_outliers$Cr)
+#shapiro.test(final_sem_outliers$Au)
+
+
+par(mfrow = c(2, 2))
+
+hist(final_sem_outliers$NI,col = 'orange')
+qqnorm(final_sem_outliers$NI,main = "Normal Q-Q Plot for Ni", ylab = "Ni Quantiles")
+qqline(final_sem_outliers$NI,col='red')
+
+hist(final_sem_outliers$Cu,col = 'yellow')
+qqnorm(final_sem_outliers$Cu,main = "Normal Q-Q Plot for Cu", ylab = "Cu Quantiles")
+qqline(final_sem_outliers$Cu,col='red')
+
+hist(final_sem_outliers$Co,col = 'red')
+qqnorm(final_sem_outliers$Co,main = "Normal Q-Q Plot for Co", ylab = "Co Quantiles")
+qqline(final_sem_outliers$Co,col='red')
+
+par(mfrow = c(2, 2))
+hist(final_sem_outliers$Zn,col = 'blue')
+qqnorm(final_sem_outliers$Zn,main = "Normal Q-Q Plot for Zn", ylab = "Zn Quantiles")
+qqline(final_sem_outliers$Zn,col='red')
+
+hist(final_sem_outliers$Cr, col= 'green')
+qqnorm(final_sem_outliers$Cr,main = "Normal Q-Q Plot for Cr", ylab = "Cr Quantiles")
+qqline(final_sem_outliers$Cr,col='red')
+
+hist(final_sem_outliers$Au, col= 'pink')
+qqnorm(final_sem_outliers$Au,main = "Normal Q-Q Plot for Au", ylab = "Au Quantiles")
+qqline(final_sem_outliers$Au,col='pink')
+
+par(mfrow = c(3, 2))
+ggdensity(final_sem_outliers$NI,col = 'orange',  xlab = "Ni", add = "mean",fill = "orange")
+ggdensity(final_sem_outliers$Cu,col = 'yellow', xlab = "Cu", add = "mean", fill = "yellow")
+ggdensity(final_sem_outliers$Co,col = 'red', xlab = "Co", add = "mean", fill = "red")
+
+par(mfrow = c(3, 2))
+ggdensity(final_sem_outliers$Zn,col = 'blue', xlab = "Zn", add = "mean",fill = "blue")
+ggdensity(final_sem_outliers$Cr,col='green', xlab = "Cr", add = "mean",fill = "green")
+ggdensity(final_sem_outliers$Au,col='pink', xlab = "Cr", add = "mean",fill = "pink")
+
+```
+
+#Box-Cox nos dados 
+```{r}
+
+###Para o Ni####
+print("Ni")
+res=boxCox(Dados_Unidos_numeric_semZero$NI~1,lambda = seq(-3,3, length=100))
+res$x[which.max(res$y)]
+lambda= bcPower(Dados_Unidos_numeric_semZero$NI,-0.272)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Ni")
+
+#####para Cr####
+print("Cr")
+a=boxCox(Dados_Unidos_numeric_semZero$CR~1,lambda = seq(-3,3, length=100))
+a$x[which.max(a$y)]
+lambda= bcPower(Dados_Unidos_numeric_semZero$CR,-0.393)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cr")
+
+###para Co        
+print("Co")
+a=boxCox(Dados_Unidos_numeric_semZero$CO~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(Dados_Unidos_numeric_semZero$CO,0.212)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Co")
+
+###para Cu
+print("Cu")
+a=boxCox(Dados_Unidos_numeric_semZero$CU~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(Dados_Unidos_numeric_semZero$CU,0.454)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cu")
+
+###para Zn
+#aparentemente sem os outliers esse deve  ficar transformado
+print("Zn")
+a=boxCox(Dados_Unidos_numeric_semZero$ZN~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(Dados_Unidos_numeric_semZero$ZN,0.515)
+shapiro.test(lambda)
+ggqqplot(lambda, title = "Zn")
+```
+
+#Box-Cox nos dados sem outliers
+```{r}
+###Para o Ni####
+
+Ni_sem_outlierseZero=final_sem_outliers$NI%>% # Convertendo em tbl mas poderia ser data frame tbm
+  as_tibble()
+Ni_sem_outlierseZero[Ni_sem_outlierseZero==0]=NA # tirando os zeros
+
+print("Ni")
+res=boxCox(Ni_sem_outlierseZero$value~1,lambda = seq(-3,3, length=100))
+b=res$x[which.max(res$y)]
+b
+lambda= bcPower(Ni_sem_outlierseZero$value,b)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Ni")
+
+#####para Cr####
+Cr_sem_outlierseZero=final_sem_outliers$Cr%>% # Convertendo em tbl mas poderia ser data frame tbm
+  as_tibble()
+Cr_sem_outlierseZero[Cr_sem_outlierseZero==0]=NA # tirando os zeros
+
+print("Cr")
+a=boxCox(Cr_sem_outlierseZero$value~1,lambda = seq(-3,3, length=100))
+b=a$x[which.max(a$y)]
+b
+lambda= bcPower(Cr_sem_outlierseZero$value,b)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cr")
+
+###para Co      
+Co_sem_outlierseZero=final_sem_outliers$Co%>% # Convertendo em tbl mas poderia ser data frame tbm
+  as_tibble()
+Co_sem_outlierseZero[Co_sem_outlierseZero==0]=NA # tirando os zeros
+
+print("Co")
+a=boxCox(Co_sem_outlierseZero$value~1,lambda = seq(-3,3, 0.001))
+b=a$x[which.max(a$y)]
+lambda= bcPower(Co_sem_outlierseZero$value,b)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Co")
+
+###para Cu
+Cu_sem_outlierseZero=final_sem_outliers$Cu%>% # Convertendo em tbl mas poderia ser data frame tbm
+  as_tibble()
+Cu_sem_outlierseZero[Cu_sem_outlierseZero==0]=NA # tirando os zeros
+
+print("Cu")
+a=boxCox(Cu_sem_outlierseZero$value~1,lambda = seq(-3,3, 0.001))
+b=a$x[which.max(a$y)]
+b
+lambda= bcPower(Cu_sem_outlierseZero$value,b)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cu")
+
+###para Zn
+Zn_sem_outlierseZero=final_sem_outliers$Zn%>% # Convertendo em tbl mas poderia ser data frame tbm
+  as_tibble()
+Zn_sem_outlierseZero[Zn_sem_outlierseZero==0]=NA # tirando os zeros
+
+print("Zn")
+a=boxCox(Zn_sem_outlierseZero$value~1,lambda = seq(-3,3, 0.001))
+b=a$x[which.max(a$y)]
+b
+lambda= bcPower(Zn_sem_outlierseZero$value,b)
+shapiro.test(lambda)
+ggqqplot(lambda, title = "Zn")
+hist(lambda,col = 'red')
+qqnorm(lambda)
+qqline(lambda,col='red')
+ggdensity(lambda,col = 'blue', xlab = "Zn", add = "mean",fill = "blue")
+
+```
+
+#Regressão linear pontos unidos para Ni
+```{r}
+#começar com uma analise e ir aumentando
+R_NixCo_Cr=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CO*Dados_Unidos_numeric$CR,data=Dados_Unidos_numeric)
+summary(R_NixCo_Cr)
+
+R_NixCo_Cr2=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CO+Dados_Unidos_numeric$CR,data=Dados_Unidos_numeric)
+summary(R_NixCo_Cr2)
+
+R_Ni_tds=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CO+Dados_Unidos_numeric$CU+Dados_Unidos_numeric$CR+Dados_Unidos_numeric$ZN, data=Dados_Unidos_numeric)
+summary(R_Ni_tds)
+confint(R_Ni_tds)
+
+R_Ni_tds2=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CO*Dados_Unidos_numeric$CU*Dados_Unidos_numeric$CR*Dados_Unidos_numeric$ZN, data=Dados_Unidos_numeric)
+summary(R_Ni_tds2)
+#confint(R_Ni_tds2)
+
+R_NixCo_Cr_Zn=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CO+Dados_Unidos_numeric$CR+Dados_Unidos_numeric$ZN, data=Dados_Unidos_numeric)
+summary(R_NixCo_Cr_Zn)
+#confint(R_NixCo_Cr_Zn)
+
+R_NixCo_Zn=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CO+Dados_Unidos_numeric$ZN, data=Dados_Unidos_numeric)
+summary(R_NixCo_Zn)
+#confint(R_NixCo_Zn)
+
+R_NixCo_Zn2=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CO*Dados_Unidos_numeric$ZN, data=Dados_Unidos_numeric)
+summary(R_NixCo_Zn2)
+
+R_NixCr_cu=lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$CU+Dados_Unidos_numeric$CR, data=Dados_Unidos_numeric)
+summary(R_NixCr_cu)
+#confint(R_NixCr_cu)
+
+```
+```{r}
+summary(lm(Dados_Unidos_numeric$NI~Dados_Unidos_numeric$AU))
+
+summary(lm(Numeric_semNAeCrcomPCA$NI~Numeric_semNAeCrcomPCA$PC1))
+```
+
+
+#Predizendo o Ni em áres com Cr e de Cr com base em Ni,Co e etc..
+```{r}
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data\\Agosto")#exportar
+
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+
+#selecionando áreas exclusivamentes com Cr
+Only_Cr=Dados_Unidos_numeric_lATLONG
+
+length(na.omit(Only_Cr$CR)) #length desired -> 3169
+Only_Cr=Only_Cr[order(Only_Cr$CR, decreasing=TRUE),] # ordenei deixando os NAs no final para o Cr
+
+Only_Cr=Only_Cr[c(1:3169),] #Deletando linhas SEM Cr
+length(Only_Cr$POINT_Y) # conferirndo comprimento das colunas
+
+#Agora vou deletar as linhas onde tem se tem valor de Ni
+Only_CrsemNI=Only_Cr[order(Only_Cr$NI, decreasing=TRUE),] # ordenei deixando os NAs no final para o Ni
+
+# Olhando com a função view() nota-se que as 2464 primeras linhas têm Ni, vou deletá-las
+Only_CrsemNI=Only_CrsemNI[c(2465:3169),] #Deletando linhas COM NI
+length(Only_CrsemNI$POINT_Y) #705 pontos apenas com Cr
+
+sf_Only_CrsemNI=st_as_sf(x=  Only_CrsemNI,coords = c("POINT_X", "POINT_Y"), crs= projcrs) 
+plot(sf_Only_CrsemNI)
+
+
+#aplicar a regressão linear
+summary(lm(NI~CR,data=Dados_Unidos_numeric)) # explica pouco os dados
+#cuja formula foi f(x)=-99.63520+0.48320Cr
+# O alto valor de amostras deletadas devido a fata se deve pois há pontos sem Ni e Cr... apenas com Au
+Ni_RL=Only_CrsemNI
+Ni_RL[,4]=-99.63520+0.48320*Only_CrsemNI$CR
+summary(Ni_RL[,4])
+# tambem posso fazer, mod=lm(NI~CR,data=Dados_Unidos_numeric), NiRl=predict(mod,Ni_Rl)
+#Normalizar os valores de Ni para compara com o Ni normal(o qual tambem terá de ser normalizado)- (X-Xmax)/(Xmax-xMin)
+#Ni_RL[,1]=(Ni_RL[,1]-max(Ni_RL[,1]))/(max(Ni_RL[,1])-min(Ni_RL[,1]))
+#summary(Ni_RL[,4])
+
+
+#Converter para sf, exportar e comparar
+sf_Ni_RL=st_as_sf(x=Ni_RL, coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+
+st_write(sf_Ni_RL, dsn= "RL_NI2.shp", driver= "ESRI Shapefile")
+
+
+
+##### Predizendo Cr####
+
+
+#selecionando áreas exclusivamentes SEM Cr
+Sem_Cr=Dados_Unidos_numeric_lATLONG
+
+Sem_Cr=arrange(Sem_Cr, desc(CR)) # ordenei deixando os NAs no final para o Cr
+match(NA,Sem_Cr$CR) # retorna o primeiro NA
+length(Sem_Cr$CR)
+
+Sem_Cr=Sem_Cr[c(3170:6749),] #Deletando linhas COM Cr
+length(Sem_Cr$POINT_Y) # conferirndo comprimento das colunas
+#view(Sem_Cr) < vemos que há 904 dados EXclusivamente com Au, vamos deletar
+
+Sem_Cr_SEMNA=arrange(Sem_Cr, desc(NI)) # ordenei deixando os NAs no final para o NI, os demais elementos tem o mesmo tanto de linhas com informação
+
+Sem_Cr_SEMNA=Sem_Cr_SEMNA[c(1:904),]
+
+sf_Sem_Cr_SEMNAr=st_as_sf(x=Sem_Cr_SEMNA,coords = c("POINT_X", "POINT_Y"), crs= projcrs) 
+plot(sf_Sem_Cr_SEMNAr)
+
+
+###explorando relações lineares com o Cr
+
+
+
+#para dados individuais
+summary(lm(Dados_Unidos_numeric$CR~Dados_Unidos_numeric$NI)) # melhor explica os dados com apenas uma variável
+
+summary(lm(Dados_Unidos_numeric$CR~Dados_Unidos_numeric$CO))# 2º melhor explica os dados
+
+summary(lm(Dados_Unidos_numeric$CR~Dados_Unidos_numeric$CU))
+
+summary(lm(Dados_Unidos_numeric$CR~Dados_Unidos_numeric$ZN))
+
+summary(lm(Dados_Unidos_numeric$CR~Dados_Unidos_numeric$AU))
+
+
+#duas variáveis 
+# vou usar só dois devido a matriz de correlação indicar isso
+
+summary(lm(Dados_Unidos_numeric$CR~Dados_Unidos_numeric$NI+Dados_Unidos_numeric$CO)) # pouco melhor que os dados individuais
+
+best_model=lm(CR~NI*CO, data=Dados_Unidos_numeric) # better, mas não sei qual interação 44
+summary(lm(CR~NI*CO, data=Dados_Unidos_numeric))
+
+teste=lm(Dados_Unidos_numeric$CR~Dados_Unidos_numeric$NI*Dados_Unidos_numeric$CO)
+a=scatterplot3d(Dados_Unidos_numeric$CR~Dados_Unidos_numeric$NI*Dados_Unidos_numeric$CO, pch=16,angle=20,color='steelblue', box=F)
+a$plane3d(teste, draw_polygon = T) # alguma coisa ta dando errado, veer depois
+
+# 3 ou mais variáveis
+summary(lm(CR~NI+CO+CU, data=Dados_Unidos_numeric))
+summary(lm(CR~NI*CO*CU, data=Dados_Unidos_numeric)) # talvez devesse usar esse 
+
+summary(lm(CR~NI*CO*ZN*CU, data=Dados_Unidos_numeric))
+summary(lm(CR~NI+CO+ZN+CU, data=Dados_Unidos_numeric))
+
+
+#App melhor modelo apendas de soma. formula  f(x)=214.47929+0.36761*Ni+5.54708*Co
+Cr_RL=Sem_Cr_SEMNA
+Cr_RL[,3]=214.47929+(0.36761*Sem_Cr_SEMNA$NI)+(5.54708*Sem_Cr_SEMNA$CO)
+#summary(Cr_RL[,3])  or posso fazer assim
+
+mod1=lm(CR~NI+CO, data=Dados_Unidos_numeric) # TEM DE ESTAR ASSIM PRA FUNÇÃO PREDICTIC FUNCIONAR
+c=predict(mod1,Sem_Cr_SEMNA)
+
+#melhor modelo com interação 
+Cr_predict=predict(best_model,Cr_RL)
+Cr_RL=Sem_Cr_SEMNA
+Cr_RL[,3]=Cr_predict
+
+#or
+#q[,3]=166.332949+1.592583*Sem_Cr_SEMNA$NI+5.127170*Sem_Cr_SEMNA$CO-0.003897*(Sem_Cr_SEMNA$NI*Sem_Cr_SEMNA$CO) # também posso fazer assim 
+
+
+#Normalizar os valores de Ni para compara com o Ni normal(o qual tambem terá de ser normalizado)- (X-Xmax)/(Xmax-xMin)
+#Ni_RL[,1]=(Ni_RL[,1]-max(Ni_RL[,1]))/(max(Ni_RL[,1])-min(Ni_RL[,1]))
+#summary(Ni_RL[,4])
+
+#Converter para sf, exportar e comparar
+sf_Cr_RL=st_as_sf(x=Cr_RL, coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+
+#st_write(sf_Cr_RL, dsn= "Cr_RL.shp", driver= "ESRI Shapefile")
+```
+
+
+
+#Juntando as áreas preditas em um único shape
+```{r}
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data\\Agosto")#exportar
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+#Pontos sem Ni e com Cr
+summary(Only_CrsemNI$NI) # te de estar vazio
+#Pontos de Ni preditos
+summary(Ni_RL$NI)
+#Pontos com Ni não preditos
+Only_Ni_Origin=Dados_Unidos_numeric_lATLONG
+Only_Ni_Origin=Only_Ni_Origin[order(Only_Ni_Origin$NI, decreasing=TRUE),] # ordenei deixando os NAs no final para o Ni
+match(NA,Only_Ni_Origin$NI) # descobrindo linha do primeiro NA
+Only_Ni_Origin=Only_Ni_Origin[c(1:3368),]
+match(NA,Only_Ni_Origin$NI) # confirmando retirada das linhas com NA
+#Comparação dos Ni
+summary(Ni_RL$NI)
+summary(Only_Ni_Origin$NI) # Tem o Ni Origin.. mas não APENAS ele, tem o Cr tbm..(escolhi mal o nome)
+#Como os valores estão muito diferentes vou normalizar para juntados 
+Ni_RL_NORM=Ni_RL
+Ni_RL_NORM[,4]=(Ni_RL_NORM[,4]-min(Ni_RL_NORM[,4]))/(max(Ni_RL_NORM[,4])-min(Ni_RL_NORM[,4]))
+Only_Ni_Origin_NORM=Only_Ni_Origin
+Only_Ni_Origin_NORM[,4]=(Only_Ni_Origin[,4]-min(Only_Ni_Origin[,4]))/(max(Only_Ni_Origin[,4])-min(Only_Ni_Origin[,4]))
+summary(Ni_RL_NORM$NI)
+summary(Only_Ni_Origin_NORM$NI)
+
+#União dos dos dataframes
+Ni_ORIG_E_RL=bind_rows(Ni_RL_NORM,Only_Ni_Origin_NORM) # funcionou tem 4073 rows, em comparação com os outros que tinha 3368 e 705
+
+#Transformando para sf
+sf_Ni_ORIG_E_RL=st_as_sf(Ni_ORIG_E_RL,coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+plot(sf_Ni_ORIG_E_RL[,4])
+#exportando
+#st_write(sf_Ni_ORIG_E_RL, dsn= "NiNorm_ORIGeRL.shp", driver= "ESRI Shapefile")
+
+
+#Pontos Con Ni e Co e SEM Cr
+Sem_Cr=Dados_Unidos_numeric_lATLONG
+length(Sem_Cr$CR)
+Sem_Cr=Sem_Cr[order(Sem_Cr$CR, decreasing=TRUE),] # ordenei deixando os NAs no final para o Cr
+match(NA,Sem_Cr$CR) 
+Sem_Cr=Sem_Cr[c(3170:6749),] #Deletando linhas COM Cr
+match(NA,Sem_Cr$CR) 
+Sem_Cr=Sem_Cr[order(Sem_Cr$NI, decreasing=TRUE),] # ordenei deixando os NAs no final para o Ni
+match(NA,Sem_Cr$NI) 
+Sem_Cr=Sem_Cr[c(1:904),] #Deletando linhas SEM NI
+summary(Sem_Cr$CR)
+#Pontos com cromo predito
+summary(Cr_RL$CR)
+
+#Pontos com Cr nao preditos
+#selecionando áreas exclusivamentes com Cr
+Only_Cr=Dados_Unidos_numeric_lATLONG
+
+length(na.omit(Only_Cr$CR)) #length desired
+Only_Cr=Only_Cr[order(Only_Cr$CR, decreasing=TRUE),] # ordenei deixando os NAs no final para o Cr
+
+Only_Cr=Only_Cr[c(1:3169),] #Deletando linhas SEM Cr
+summary(Only_Cr$CR)
+
+#União dos dataframes
+Cr_ORIG_E_RL=bind_rows(Only_Cr,Cr_RL)
+
+#transformando
+sf_Cr_RL=st_as_sf(Cr_RL,coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+plot(sf_Cr_RL[,3])
+sf_Only_Cr=st_as_sf(Only_Cr,coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+plot(sf_Only_Cr[,3])
+sf_Cr_ORIG_E_RL=st_as_sf(Cr_ORIG_E_RL,coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+plot(sf_Cr_ORIG_E_RL[,3])
+
+#exportando
+#st_write(sf_Cr_ORIG_E_RL, dsn= "Cr_ORIG_E_RL.shp", driver= "ESRI Shapefile")
+
+
+#Juntando o Cr com os dados normalizados
+# ta dando errado os ids das amostras###########
+Cr_ORIG_E_RL=Cr_ORIG_E_RL[order(Cr_ORIG_E_RL$ID_AMOSTRA, decreasing=TRUE),] 
+Ni_ORIG_E_RL=Ni_ORIG_E_RL[order(Ni_ORIG_E_RL$ID_AMOSTRA, decreasing=TRUE),]
+identical(Cr_ORIG_E_RL$ID_AMOSTRA,Ni_ORIG_E_RL$ID_AMOSTRA) # Checando se estão iguais os números das amostras
+CrNI_ORIG_E_RL=Cr_ORIG_E_RL
+CrNI_ORIG_E_RL[,4]=Ni_ORIG_E_RL[,4]
+
+# tirando os zeros, quando tiro os zeros creio que perco os valores da RL pois não há dados de Zn por ex. 
+CrNI_ORIG_E_RL_semNA=CrNI_ORIG_E_RL[,c(2:7)]
+CrNI_ORIG_E_RL_semNA=na.omit(CrNI_ORIG_E_RL_semNA)
+
+ #Normalizando valores 
+CrNI_ORIG_E_RL_semNA_norm=CrNI_ORIG_E_RL_semNA
+  CrNI_ORIG_E_RL_semNA_norm[,1]=(CrNI_ORIG_E_RL_semNA_norm[,1]-min(CrNI_ORIG_E_RL_semNA_norm[,1], na.rm=T))/(max(CrNI_ORIG_E_RL_semNA_norm[,1], na.rm=T)-min(CrNI_ORIG_E_RL_semNA_norm[,1], na.rm=T))
+  CrNI_ORIG_E_RL_semNA_norm[,2]=(CrNI_ORIG_E_RL_semNA_norm[,2]-min(CrNI_ORIG_E_RL_semNA_norm[,2], na.rm=T))/(max(CrNI_ORIG_E_RL_semNA_norm[,2], na.rm=T)-min(CrNI_ORIG_E_RL_semNA_norm[,2], na.rm=T))
+   CrNI_ORIG_E_RL_semNA_norm[,4]=(CrNI_ORIG_E_RL_semNA_norm[,4]-min(CrNI_ORIG_E_RL_semNA_norm[,4], na.rm=T))/(max(CrNI_ORIG_E_RL_semNA_norm[,4], na.rm=T)-min(CrNI_ORIG_E_RL_semNA_norm[,4], na.rm=T))
+   CrNI_ORIG_E_RL_semNA_norm[,5]=(CrNI_ORIG_E_RL_semNA_norm[,5]-min(CrNI_ORIG_E_RL_semNA_norm[,5], na.rm=T))/(max(CrNI_ORIG_E_RL_semNA_norm[,5], na.rm=T)-min(CrNI_ORIG_E_RL_semNA_norm[,5], na.rm=T))
+ CrNI_ORIG_E_RL_semNA_norm[,6]=(CrNI_ORIG_E_RL_semNA_norm[,6]-min(CrNI_ORIG_E_RL_semNA_norm[,6], na.rm=T))/(max(CrNI_ORIG_E_RL_semNA_norm[,6], na.rm=T)-min(CrNI_ORIG_E_RL_semNA_norm[,6], na.rm=T))
+  
+ 
+#Normalizando sem o Ni do RL
+ Cr_ORIG_E_RL_norm=Cr_ORIG_E_RL[,c(2:7)]
+ Cr_ORIG_E_RL_norm_semNA=na.omit(Cr_ORIG_E_RL_norm)
+  Cr_ORIG_E_RL_norm_semNA[,1]=(Cr_ORIG_E_RL_norm_semNA[,1]-min(Cr_ORIG_E_RL_norm_semNA[,1], na.rm=T))/(max(Cr_ORIG_E_RL_norm_semNA[,1], na.rm=T)-min(Cr_ORIG_E_RL_norm_semNA[,1], na.rm=T))
+  Cr_ORIG_E_RL_norm_semNA[,2]=(Cr_ORIG_E_RL_norm_semNA[,2]-min(Cr_ORIG_E_RL_norm_semNA[,2], na.rm=T))/(max(Cr_ORIG_E_RL_norm_semNA[,2], na.rm=T)-min(Cr_ORIG_E_RL_norm_semNA[,2], na.rm=T))
+  Cr_ORIG_E_RL_norm_semNA[,3]=(Cr_ORIG_E_RL_norm_semNA[,3]-min(Cr_ORIG_E_RL_norm_semNA[,3], na.rm=T))/(max(Cr_ORIG_E_RL_norm_semNA[,3], na.rm=T)-min(Cr_ORIG_E_RL_norm_semNA[,3], na.rm=T))
+   Cr_ORIG_E_RL_norm_semNA[,4]=(Cr_ORIG_E_RL_norm_semNA[,4]-min(Cr_ORIG_E_RL_norm_semNA[,4], na.rm=T))/(max(Cr_ORIG_E_RL_norm_semNA[,4], na.rm=T)-min(Cr_ORIG_E_RL_norm_semNA[,4], na.rm=T))
+   Cr_ORIG_E_RL_norm_semNA[,5]=(Cr_ORIG_E_RL_norm_semNA[,5]-min(Cr_ORIG_E_RL_norm_semNA[,5], na.rm=T))/(max(Cr_ORIG_E_RL_norm_semNA[,5], na.rm=T)-min(Cr_ORIG_E_RL_norm_semNA[,5], na.rm=T))
+ Cr_ORIG_E_RL_norm_semNA[,6]=(Cr_ORIG_E_RL_norm_semNA[,6]-min(Cr_ORIG_E_RL_norm_semNA[,6], na.rm=T))/(max(Cr_ORIG_E_RL_norm_semNA[,6], na.rm=T)-min(Cr_ORIG_E_RL_norm_semNA[,6], na.rm=T))
+```
+
+
+#deletando o NA de cada tabela e exportando os elementos individuais.
+```{r}
+summary(sf_Cr_ORIG_E_RL)
+summary(sf_Ni_ORIG_E_RL)
+#Não precisei fazer nada pois em ambos já estavam apenas com os valores sem NA para os determinados elementos - Cr e NI
+
+#Para Au
+Pontos_AU=Dados_Unidos_numeric_lATLONG[,c(1,6,8:9)]
+Pontos_AU=na.omit(Pontos_AU)
+
+summary(Pontos_AU)
+
+# convertendo e exportando
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+setwd("C:/Users/pc/Desktop/td/sf_write")
+sf_Pontos_AU=st_as_sf(Pontos_AU,coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+#st_write(sf_Pontos_AU, dsn= "Pontos_AU.shp", driver= "ESRI Shapefile")
+```
+
+
+
+
+
+
+
+
+
+
+final
+
+
+#Correlação
+```{r}
+Pearsoncor=cor(Dados_Unidos_numeric, use="complete.obs") #complete.obs é a retirada dos valroes NA
+Pearsoncor
+
+
+corrplot(Pearsoncor, method = "color", 
+         type = "upper", #mostra apenas a porção superior
+         addCoef.col = "black", # acrescenta os dados numéricos
+         order = "hclust", # ordena a correlação do maior pro menor
+         tl.col="black", # cor das letras é preta
+         tl.srt = 45, #rotação das variáveis
+         mar=c(0,0,1,0)
+         )
+         mtext("Pearson", at=5.4, line=1, cex=2)
+
+testCor=cor.mtest(Dados_Unidos_numeric,conf.level=0.95)
+corrplot(Pearsoncor,p.mat =testCor$p)
+#corrplot(Pearsoncor,p.mat =testCor$p,insig = 'p-value' )
+b=rcorr(as.matrix(Dados_Unidos_numeric))
+b
+#b$r é a matriz de correlação
+#b$p é o valor de p
+#b$n valores comparados
+
+
+PearsoncorClust=hclust(dist(Pearsoncor))
+plot(PearsoncorClust)
+rect.hclust(PearsoncorClust,k=2,border=2:5)
+
+####com spearman
+Spearcor=cor(Dados_Unidos_numeric,method = "spearman", use="complete.obs")
+Spearcor
+corrplot(Spearcor,
+         method = "color", 
+         type = "lower", #mostra apenas a porção superior
+         addCoef.col = "black", # acrescenta os dados numéricos
+         order = "hclust", # ordena a correlação do maior pro menor
+         tl.col="black", # cor das letras é preta
+         tl.srt = 45,
+         mar=c(0,0,1,0)
+         )
+         mtext("Spearman", at=5.2, line=1, cex=2)
+
+testCor=cor.mtest(Dados_Unidos_numeric,method = "spearman", conf.level=0.95)
+corrplot(Spearcor,
+         p.mat =testCor$p,
+         tl.col = "black",
+         tl.srt = 0)
+
+
+b=rcorr(as.matrix(Dados_Unidos_numeric), type="spearman") # está dando diferente do método acima
+b
+
+
+SpearcorClust=hclust(dist(Spearcor))
+plot(SpearcorClust)
+rect.hclust(SpearcorClust,k=3,border=3:5)
+
+####com Kendall
+Kendallcor=cor(Dados_Unidos_numeric,method = "kendall", use="complete.obs")
+Kendallcor
+corrplot(Kendallcor,
+         method = "color", 
+         type = "lower", #mostra apenas a porção superior
+         addCoef.col = "black", # acrescenta os dados numéricos
+         order = "hclust", # ordena a correlação do maior pro menor
+         tl.col="black", # cor das letras é preta
+         tl.srt = 45,
+)
+         mtext("Kendall", at=5.4, line=1, cex=2)
+
+testCor=cor.mtest(Dados_Unidos_numeric,conf.level=0.95,method = "kendall")
+corrplot(Kendallcor,p.mat =testCor$p)
+
+
+KendallcorClust=hclust(dist(Kendallcor))
+plot(KendallcorClust)
+rect.hclust(KendallcorClust,k=3,border=2:5)
+
+## Com os dados norm << não mudou nada, acho q já faz isso, vamos ver pca
+Pearsoncornorm=cor(Dados_Normal_semNA, use="complete.obs") #complete.obs é a retirada dos valroes NA
+Pearsoncornorm
+
+
+corrplot(Pearsoncornorm, method = "color", 
+         type = "lower", #mostra apenas a porção superior
+         addCoef.col = "black", # acrescenta os dados numéricos
+         order = "hclust", # ordena a correlação do maior pro menor
+         tl.col="black", # cor das letras é preta
+         tl.srt = 45, #rotação das legebda 
+         )
+         mtext("Pearson", at=5.4, line=1, cex=2)
+
+testCor=cor.mtest(Dados_Normal_semNA,conf.level=0.95)
+corrplot(Pearsoncornorm,
+         p.mat =testCor$p,
+         tl.col = "black",
+         tl.srt = 0
+         )
+
+corrplot(Pearsoncornorm,
+         type = "upper",
+         p.mat =testCor$p,
+         tl.col = "black",
+         tl.srt = 0
+         )
+
+```
+
+
+#PCA
+```{r}
+#valor sem linhas com Na
+Dados_Unidos_numeric_semNA=na.omit(Dados_Unidos_numeric) # essa função elimina as linhas que contem NA
+length(Dados_Unidos_numeric_semNA$NI)
+sum(is.na(Dados_Unidos_numeric_semNA))
+
+Dados_Unidos_numeric_semNA=Dados_Unidos_numeric_semNA[order(Dados_Unidos_numeric_semNA$NI, decreasing=F),] #ordenando com o Ni crescente
+
+pca_tds_semNa=prcomp(Dados_Unidos_numeric_semNA)
+pca_tds_semNa
+
+fviz_eig(pca_tds_semNa, main='Scree Plot - Tds')
+fviz_pca_ind(pca_tds_semNa,col.ind = 'contrib', title = "Tds'")
+fviz_pca_var(pca_tds_semNa,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), title = "Tds")
+
+#Agora testando sem o Cr
+Dados_Unidos_numeric_semNAeCR=Dados_Unidos_numeric_semNA[,c(1,3:6)]
+pca_tds_semNaeCr=prcomp(Dados_Unidos_numeric_semNAeCR)
+pca_tds_semNaeCr
+
+fviz_eig(pca_tds_semNaeCr, main='Scree Plot - Sem Cr')
+fviz_pca_ind(pca_tds_semNaeCr,col.ind = 'contrib', title = "Dados Sem Cr")
+fviz_pca_var(pca_tds_semNaeCr,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), title = "Dados Sem Cr")
+
+#Agora testando sem o Cr e Au
+Dados_Unidos_numeric_semNAeCReAU=Dados_Unidos_numeric_semNA[,c(1,3,4,6)]
+Dados_Unidos_numeric_semNAeCReAU=Dados_Unidos_numeric_semNAeCReAU[order(Dados_Unidos_numeric_semNAeCReAU$NI, decreasing=F),] #ordenando com o Ni crescente
+pca_tds_semNaeCreAu=prcomp(Dados_Unidos_numeric_semNAeCReAU)
+pca_tds_semNaeCreAu
+
+
+fviz_eig(pca_tds_semNaeCreAu, main='Scree Plot - Sem Cr e Au')
+fviz_pca_ind(pca_tds_semNaeCreAu,col.ind = 'contrib', title = "Dados sem Cr e Au")
+fviz_pca_var(pca_tds_semNaeCreAu,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), title = "Dados  sem Cr e Au")
+
+#Agora sem o Ni
+Dados_Unidos_numeric_semNAeNI=Dados_Unidos_numeric_semNA[,c(1,2,4:6)]
+
+pca_tds_semNaeNi=prcomp(Dados_Unidos_numeric_semNAeNI)
+pca_tds_semNaeNi
+
+fviz_eig(pca_tds_semNaeNi,main='Scree Plot - Sem Ni')
+fviz_pca_ind(pca_tds_semNaeNi,col.ind = 'contrib', title = "Dados Sem Ni")
+fviz_pca_var(pca_tds_semNaeNi,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), title = "Dados Sem Ni")
+
+#Agora acrescentando o Cr da regressão
+Dados_Unidos_numeric_semNA_CrRl=Cr_ORIG_E_RL
+Dados_Unidos_numeric_semNA_CrRl=na.omit(Dados_Unidos_numeric_semNA_CrRl) # retirando os NAs
+Dados_Unidos_numeric_semNA_CrRl=Dados_Unidos_numeric_semNA_CrRl[,c(2:7)] # retirando coord. e índice
+Dados_Unidos_numeric_semNA_CrRl=Dados_Unidos_numeric_semNA_CrRl[order(Dados_Unidos_numeric_semNA_CrRl$NI, decreasing=F),] #ordenando com o Ni crescente
+
+pca_Dados_Unidos_numeric_semNA_CrRl=prcomp(Dados_Unidos_numeric_semNA_CrRl)
+fviz_eig(pca_Dados_Unidos_numeric_semNA_CrRl,main='Scree Plot - Cr da regressão')
+fviz_pca_ind(pca_Dados_Unidos_numeric_semNA_CrRl,col.ind = 'contrib', title = "Cr da regressão")
+fviz_pca_var(pca_Dados_Unidos_numeric_semNA_CrRl,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), title = "Dados Cr da regressão")
+
+
+######Com os dados normalizados
+Dados_Normal_semNA=Dados_Normal_semNA[order(Dados_Normal_semNA$NI, decreasing=F),] #ordenando com o Ni crescente
+
+pca_tdsNorm_semNa=prcomp(Dados_Normal_semNA)
+pca_tdsNorm_semNa
+
+fviz_eig(pca_tdsNorm_semNa,main='Scree Plot - Dados Normalizados')
+fviz_pca_ind(pca_tdsNorm_semNa,col.ind = 'contrib', title = "Dados Normalizados",geom='point', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+fviz_pca_var(pca_tdsNorm_semNa,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),title = "Dados Normalizados")
+
+b=pca_tdsNorm_semNa$rotation
+  b %>% 
+    kbl(caption = "PC - normalized geochemestry data") %>% 
+    kable_classic_2(full_width = F, html_font = "Cambria")
+#PCA dados norm com RL de Ni e Cr
+CrNI_ORIG_E_RL_semNA_norm=CrNI_ORIG_E_RL_semNA_norm[order(CrNI_ORIG_E_RL_semNA_norm$NI, decreasing=F),] #ordenando com o Ni crescente
+
+pca_tdsRLNorm_semNa=prcomp(CrNI_ORIG_E_RL_semNA_norm)
+pca_tdsRLNorm_semNa
+
+fviz_eig(pca_tdsRLNorm_semNa, main='Scree Plot - Dados Normalizados com Rl de Ni e Cr')
+fviz_pca_ind(pca_tdsRLNorm_semNa,col.ind = 'contrib',title = "Dados Normalizados com Rl de Ni e Cr")
+fviz_pca_var(pca_tdsRLNorm_semNa,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),title = "Dados Normalizados com Rl de Ni e Cr")
+
+#Normalizados com Rl de Cr apenas, deve apresentar igual ao anterior pois os pontos preditos de Ni foram eliminados quando eliminei as linhas que apresentassem algum NA
+
+Cr_ORIG_E_RL_norm_semNA=Cr_ORIG_E_RL_norm_semNA[order(Cr_ORIG_E_RL_norm_semNA$NI, decreasing=F),] #ordenando com o Ni crescente
+
+pca_CrRLNorm_semNa=prcomp(Cr_ORIG_E_RL_norm_semNA)
+pca_CrRLNorm_semNa
+
+fviz_eig(pca_CrRLNorm_semNa,main='Scree Plot - Dados Normalizados com Rl de Cr apenas')
+fviz_pca_ind(pca_CrRLNorm_semNa,col.ind = 'contrib',title = "Dados Normalizados com Rl de Cr apenas")
+fviz_pca_var(pca_CrRLNorm_semNa,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),title = "Dados Normalizados com Rl de Cr apenas")
+
+
+###Normalizados sem o Ni e com Rl de Cr
+Dados_Normal_semNAeNi=Dados_Normal_semNA[,c(1,2,4:6)]
+pca_tdsNorm_semNaeNi=prcomp(Dados_Normal_semNAeNi)
+pca_tdsNorm_semNaeNi
+
+fviz_eig(pca_tdsNorm_semNaeNi, main='Scree Plot - Dados Normalizados sem Ni com Rl de Cr')
+fviz_pca_ind(pca_tdsNorm_semNaeNi,col.ind = 'contrib',title = "Dados Normalizados sem Ni com Rl de Cr")
+fviz_pca_var(pca_tdsNorm_semNaeNi,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),title = "Dados Normalizados sem Ni com Rl de Cr")
+```
+
+#Passando PCA para sf 
+```{r}
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+
+
+Dados_Unidos_numeric_lATLONG_semNa=na.omit(Dados_Unidos_numeric_lATLONG)
+match(NA,Dados_Unidos_numeric_lATLONG_semNa) # conferindo se não há NA foram eliminados
+#Ordenando pq os dados de entrada para pca estavam ordenados
+Dados_Unidos_numeric_lATLONG_semNa=Dados_Unidos_numeric_lATLONG_semNa[order(Dados_Unidos_numeric_lATLONG_semNa$NI, decreasing=F),]# ordenando para Ni
+sf_Dados_Unidos_numeric_lATLONG_semNa=st_as_sf(x=Dados_Unidos_numeric_lATLONG_semNa, coords = c("POINT_X", "POINT_Y"), crs= projcrs) # conertendo para sf
+sf_Dados_Unidos_numeric_lATLONG_semNa[,9]=(pca_tds_semNa$x[,1]) # Adicionando PC1
+# e se eu tentar fazer a oca com o sf
+#trocando nome de uma coluna
+#names(df) looks into all the names in the df
+#[names(df) == old.var.name] extracts the variable name you want to check
+names(sf_Dados_Unidos_numeric_lATLONG_semNa)[names(sf_Dados_Unidos_numeric_lATLONG_semNa) == '...9'] <- 'PC1' # trocando nome de uma coluna
+
+#setwd("C:/Users/pc/Desktop/td/sf_write")#exportar
+#st_write(sf_Dados_Unidos_numeric_lATLONG_semNa, dsn= "PC1_semNAshp", driver= "ESRI Shapefile")
+
+
+####Agora para a PC1 sem o com o Cr, o problema desta é que o Cr está mais relevante que o Co e não é assim
+
+final_numericLATLONG_semNA=na.omit(final_numeric_LATLONG) # essa função elimina as linhas que contem NA
+length(final_numericLATLONG_semNA$POINT_X)
+sum(is.na(final_numericLATLONG_semNA))
+
+final_numericLATLONG_semNA=final_numericLATLONG_semNA[order(final_numericLATLONG_semNA$NI, decreasing=F),] # ordenei deixando Ni crescente
+#Está ficando ordenada pois os dados de entrada da matriz que utilizei estão com o Ni ordenad
+
+sf_final_numericLATLONG_semNA=st_as_sf(x=final_numericLATLONG_semNA, coords = c("POINT_X", "POINT_Y"), crs= projcrs) # conertendo para sf
+
+sf_final_numericLATLONG_semNA[,7]=(pca_tds_semNaeCr$x[,1]) # Adicionando PC1
+names(sf_final_numericLATLONG_semNA)[names(sf_final_numericLATLONG_semNA) == "...7" ] <- "PC1" # trocando nome de uma coluna
+
+
+st_write(sf_final_numericLATLONG_semNA, dsn= "PC1_semCR.shp", driver= "ESRI Shapefile")
+
+###para PC1 com Cr da RL
+Dados_Unidos_numeric_semNA_CrRl=Cr_ORIG_E_RL
+Dados_Unidos_numeric_semNA_CrRl=na.omit(Dados_Unidos_numeric_semNA_CrRl) # retirando os NAs
+sum(is.na(Dados_Unidos_numeric_semNA_CrRl))
+Dados_Unidos_numeric_semNA_CrRl=Dados_Unidos_numeric_semNA_CrRl[order(Dados_Unidos_numeric_semNA_CrRl$NI, decreasing=F),] # ordenei deixando Ni no Topo
+sf_Dados_Unidos_numeric_semNA_CrRl=st_as_sf(x=Dados_Unidos_numeric_semNA_CrRl, coords = c("POINT_X", "POINT_Y"), crs= projcrs) 
+sf_Dados_Unidos_numeric_semNA_CrRl[,9]=(pca_Dados_Unidos_numeric_semNA_CrRl$x[,1]) # Adicionando PC1
+names(sf_Dados_Unidos_numeric_semNA_CrRl)[names(sf_Dados_Unidos_numeric_semNA_CrRl) == "...9" ] <- "PC1" # trocando nome de uma coluna
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data\\Agosto")#exportar
+st_write(sf_Dados_Unidos_numeric_semNA_CrRl, dsn= "PC1_comCRRL.shp", driver= "ESRI Shapefile")
+
+
+###Dados normalizados PC1
+
+sf_Dados_Unidos_numericNorm_lATLONG_semNa=st_as_sf(x=sf_Dados_Unidos_numeric_lATLONG_semNa, coords = c("POINT_X", "POINT_Y"), crs= projcrs) # conertendo para sf
+sf_Dados_Unidos_numericNorm_lATLONG_semNa[,9]=(pca_tdsNorm_semNa$x[,1]) # Adicionando PC1
+
+names(sf_Dados_Unidos_numericNorm_lATLONG_semNa)[names(sf_Dados_Unidos_numericNorm_lATLONG_semNa) == '...9'] <- 'PC1' # trocando nome de uma coluna
+#setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data\\Agosto")#exportar
+#st_write(sf_Dados_Unidos_numericNorm_lATLONG_semNa, dsn= "PC1_Norm2.shp", driver= "ESRI Shapefile")
+
+###Dados normalizados PC1 com RL de Ni e Cr
+CrNI_ORIG_E_RL_LATLONG=na.omit(CrNI_ORIG_E_RL)
+sf_Dados_Unidos_numericNormRL_lATLONG_semNa=st_as_sf(x=CrNI_ORIG_E_RL_LATLONG, coords = c("POINT_X", "POINT_Y"), crs= projcrs) # conertendo para sf
+sf_Dados_Unidos_numericNormRL_lATLONG_semNa[,9]=(pca_tdsRLNorm_semNa$x[,1]) # Adicionando PC1
+names(sf_Dados_Unidos_numericNormRL_lATLONG_semNa)[names(sf_Dados_Unidos_numericNormRL_lATLONG_semNa) == '...9'] <- 'PC1' # trocando nome de uma coluna
+sf_Dados_Unidos_numericNormRL_lATLONG_semNa=sf_Dados_Unidos_numericNormRL_lATLONG_semNa[,c(8:9)]
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data\\Agosto")#exportar
+st_write(sf_Dados_Unidos_numericNormRL_lATLONG_semNa, dsn= "PC1_NormRL.shp", driver= "ESRI Shapefile")
+```
+
+#Vendo as médias dos dados das médias das bacias
+```{r}
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data\\Agosto")#exportar
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+
+
+#é o mesmo da de baixo: L_PCACrOrgRLBasin=st_read("L_PCACrOrgRLBasin.shp")
+PC1_Norm_Basin=st_read("PC1_NormBasin.shp") 
+NiNorm_ORIGeRLBasin=st_read("NiNorm_ORIGeRLBasin.shp")
+Cr_ORIG_E_RLBasin=st_read("Cr_ORIG_E_RLBasin.shp")
+LB_CuBasin=st_read("LB_CuBasin.shp")
+LB_AuBasin=st_read("LB_AuBasin.shp")
+LB_CoBasin=st_read("LB_CoBasin.shp")
+LB_ZnBasin=st_read("LB_ZnBasin.shp")
+
+mean(PC1_Norm_Basin$Avg_PC1) # média
+mean(PC1_Norm_Basin$Avg_PC1, na.rm=T) # ignora NAs
+mean(PC1_Norm_Basin$Avg_PC1[PC1_Norm_Basin$Avg_PC1!=0]) # ignora zeros 
+mean(PC1_Norm_Basin$Avg_PC1[PC1_Norm_Basin$Avg_PC1 !=0], na.rm=T) # Usar esse para média p ignora zeros e NAs
+
+#Antigos Vs valores à substituir
+mean(PC1_comCRRLBasin$Avg_PC1)# média
+mean(PC1_comCRRLBasin$Avg_PC1[PC1_comCRRLBasin$Avg_PC1 !=0], na.rm=T) # Usar esse que ignora os zeros
+mean(NiNorm_ORIGeRLBasin$Avg)
+mean(NiNorm_ORIGeRLBasin$Avg_NI[NiNorm_ORIGeRLBasin$Avg_NI!=0], na.rm=T)# Usar esse que ignora os zeros
+mean(Cr_ORIG_E_RLBasin$Avg_CR)
+mean(Cr_ORIG_E_RLBasin$Avg_CR[Cr_ORIG_E_RLBasin$Avg_CR !=0], na.rm=T)# Usar esse que ignora os zeros
+mean(LB_CoBasin$Avg_CO)
+mean(LB_CoBasin$Avg_CO[LB_CoBasin$Avg_CO !=0], na.rm=T)# Usar esse que ignora os zeros
+mean(LB_CuBasin$Avg_CU)
+mean(LB_CuBasin$Avg_CU[LB_CuBasin$Avg_CU!=0], na.rm=T)# Usar esse que ignora os zeros
+mean(LB_AuBasin$Avg_AU)
+mean(LB_AuBasin$Avg_AU[LB_AuBasin$Avg_AU!=0], na.rm=T)# Usar esse que ignora os zeros
+mean(LB_ZnBasin$Avg_ZN)
+mean(LB_ZnBasin$Avg_ZN[LB_ZnBasin$Avg_ZN!=0], na.rm=T)# Usar esse que ignora os zeros
+mean(PC1_Norm_Basin$Avg_PC1[PC1_Norm_Basin$Avg_PC1!=0], na.rm=T)# Usar esse que ignora os zeros
+
+
+#replace Zeros pelo valor médio
+#testando: L_PCACrOrgRLBasin$Avg_PC1[L_PCACrOrgRLBasin$Avg_PC1==12]=12000
+
+
+#PC! NORM
+a=as.data.frame(PC1_Norm_Basin[,c(12)]) # transformando apenas em dataframe 
+a["Avg_PC1"][a['Avg_PC1']==0]<-mean(PC1_Norm_Basin$Avg_PC1[PC1_Norm_Basin$Avg_PC1 !=0], na.rm=T)#substituindo os zeros pela média dos demais valores - ignorando os zeros para esse média
+M_PC1_NormBasin=PC1_Norm_Basin # criando a feição
+M_PC1_NormBasin$Avg_PC1=a$Avg_PC1 # adicionando os valores na feição
+st_write(M_PC1_NormBasin, dsn= "M_PC1_NormBasin.shp", driver= "ESRI Shapefile",overwrite=T)
+
+#Ni Origin e RL
+a=as.data.frame(NiNorm_ORIGeRLBasin[,c(8)]) 
+a["Avg_NI"][a['Avg_NI']==0]<-mean(NiNorm_ORIGeRLBasin$Avg_NI[NiNorm_ORIGeRLBasin$Avg_NI!=0], na.rm=T)
+M_NiNorm_ORIGeRLBasin=NiNorm_ORIGeRLBasin
+M_NiNorm_ORIGeRLBasin$Avg_NI=a$Avg_NI
+st_write(M_NiNorm_ORIGeRLBasin, dsn= "M_NiNorm_ORIGeRLBasin.shp", driver= "ESRI Shapefile")
+
+# Cromo 
+a=as.data.frame(Cr_ORIG_E_RLBasin[,c(7)]) 
+a["Avg_CR"][a['Avg_CR']==0]<-mean(Cr_ORIG_E_RLBasin$Avg_CR[Cr_ORIG_E_RLBasin$Avg_CR!=0], na.rm=T)
+M_Cr_ORIG_E_RLBasin=Cr_ORIG_E_RLBasin
+M_Cr_ORIG_E_RLBasin$Avg_CR=a$Avg_CR
+st_write(M_Cr_ORIG_E_RLBasin, dsn= "M_Cr_ORIG_E_RLBasin.shp", driver= "ESRI Shapefile")
+
+#Cobalto
+
+a=as.data.frame(LB_CoBasin[,c(6)]) 
+a["Avg_CO"][a['Avg_CO']==0]<-mean(LB_CoBasin$Avg_CO[LB_CoBasin$Avg_CO!=0], na.rm=T)
+M_LB_CoBasin=LB_CoBasin
+M_LB_CoBasin$Avg_CO=a$Avg_CO
+st_write(M_LB_CoBasin, dsn= "M_LB_CoBasin.shp", driver= "ESRI Shapefile")
+
+#Cobre
+
+a=as.data.frame(LB_CuBasin[,c(6)]) 
+a["Avg_CU"][a['Avg_CU']==0]<-mean(LB_CuBasin$Avg_CU[LB_CuBasin$Avg_CU!=0], na.rm=T)
+M_LB_CuBasin=LB_CuBasin
+M_LB_CuBasin$Avg_CU=a$Avg_CU
+st_write(M_LB_CuBasin, dsn= "M_LB_CuBasin.shp", driver= "ESRI Shapefile")
+
+#Ouro
+
+a=as.data.frame(LB_AuBasin[,c(6)]) 
+a["Avg_AU"][a['Avg_AU']==0]<-mean(LB_AuBasin$Avg_AU[LB_AuBasin$Avg_AU!=0], na.rm=T)
+M_LB_AuBasin=LB_AuBasin
+M_LB_AuBasin$Avg_AU=a$Avg_AU
+st_write(M_LB_AuBasin, dsn= "M_LB_AuBasin.shp", driver= "ESRI Shapefile")
+
+#Zinco
+
+a=as.data.frame(LB_ZnBasin[,c(6)]) 
+a["Avg_ZN"][a['Avg_ZN']==0]<-mean(LB_ZnBasin$Avg_ZN[LB_ZnBasin$Avg_ZN!=0], na.rm=T)
+M_LB_ZnBasin=LB_ZnBasin
+M_LB_ZnBasin$Avg_ZN=a$Avg_ZN
+
+st_write(M_LB_ZnBasin, dsn= "M_LB_ZnBasin.shp", driver= "ESRI Shapefile")
+
+#Plots antigos vs novos 
+plot(PC1_comCRRLBasin[,12])
+plot(M_PC1_comCRRLBasin[,12])
+plot(M_PC1_NormBasin[,12])
+plot(NiNorm_ORIGeRLBasin[,8])
+plot(M_NiNorm_ORIGeRLBasin[,8])
+plot(LB_CoBasin[,6])
+plot(M_LB_CoBasin[,6])
+plot(LB_CuBasin[,6])
+plot(M_LB_CuBasin[,6])
+plot(LB_AuBasin[,6])
+plot(M_LB_AuBasin[,6])
+plot(LB_ZnBasin[,6])
+plot(M_LB_ZnBasin[,6])
+plot(Cr_ORIG_E_RLBasin[,7])
+plot(M_Cr_ORIG_E_RLBasin[,7])
+
+
+#Conferindo se a média nova corresponde a quanto tonha de dar
+summary(M_PC1_comCRRLBasin$Avg_PC1)
+mean(PC1_comCRRLBasin$Avg_PC1[PC1_comCRRLBasin$Avg_PC1 !=0], na.rm=T) 
+summary(M_NiNorm_ORIGeRLBasin$Avg_NI)
+mean(NiNorm_ORIGeRLBasin$Avg_NI[NiNorm_ORIGeRLBasin$Avg_NI!=0], na.rm=T)
+summary(M_Cr_ORIG_E_RLBasin$Avg_CR)
+mean(Cr_ORIG_E_RLBasin$Avg_CR[Cr_ORIG_E_RLBasin$Avg_CR !=0], na.rm=T)
+summary(M_LB_CoBasin$Avg_CO)
+mean(LB_CoBasin$Avg_CO[LB_CoBasin$Avg_CO !=0], na.rm=T)# Usar esse que ignora os zeros
+summary(M_LB_CuBasin$Avg_CU)
+mean(LB_CuBasin$Avg_CU[LB_CuBasin$Avg_CU!=0], na.rm=T)# Usar esse que ignora os zeros
+summary(M_LB_AuBasin$Avg_AU)
+mean(LB_AuBasin$Avg_AU[LB_AuBasin$Avg_AU!=0], na.rm=T)# Usar esse que ignora os zeros
+summary(M_LB_ZnBasin$Avg_ZN)
+mean(LB_ZnBasin$Avg_ZN[LB_ZnBasin$Avg_ZN!=0], na.rm=T)# Usar esse que ignora os zeros
+
+```
+
+```{r}
+plot(PC1_comCRRLBasin[,12])
+plot(M_PC1_comCRRLBasin[,12])
+plot(NiNorm_ORIGeRLBasin[,8])
+plot(M_NiNorm_ORIGeRLBasin[,8])
+plot(LB_CoBasin[,6])
+plot(M_LB_CoBasin[,6])
+plot(LB_CuBasin[,6])
+plot(M_LB_CuBasin[,6])
+plot(LB_AuBasin[,6])
+plot(M_LB_AuBasin[,6])
+plot(LB_ZnBasin[,6])
+plot(M_LB_ZnBasin[,6])
+plot(Cr_ORIG_E_RLBasin[,7])
+plot(M_Cr_ORIG_E_RLBasin[,7])
+```
+
+
+
+
+
+
+
+
+
+#Dados antigos############
+--
+--
+--
+-
+-
+-
+#importando dados 
+```{r}
+setwd("E:\\Mestrado\\Dados\\Dados_Process\\Geochemical_Exploration_data")
+
+Ni_Platina_espectros <- read_excel("Ni_Platina_espectrosV2.xls")
+print('Ni')
+summary(Ni_Platina_espectros$NI)
+boxplot(Ni_Platina_espectros$NI)
+
+Cu_Platina_espectros <- read_excel("Cu_Platina_espectros.xls")
+print('Cu')
+summary(Cu_Platina_espectros$CU)
+boxplot(Cu_Platina_espectros$CU)
+
+Co_Platina_espectros <- read_excel("Co_Platina_espectros.xls")
+print('Co')
+summary(Co_Platina_espectros$CO)
+boxplot(Co_Platina_espectros$CO)
+
+Cr_Platina_espectros <- read_excel("Cr_Platina_espectros.xls") 
+print('Cr')
+summary(Cr_Platina_espectros$CR)
+boxplot(Cr_Platina_espectros$CR)
+
+Zn_Platina_espectros <- read_excel("Zn_Platina_espectros.xls") 
+print('Zn')
+summary(Zn_Platina_espectros$ZN)
+boxplot(Zn_Platina_espectros$ZN)
+
+#final<- read_excel("GeoquimicaR2.xls") # conferir pois o valor minimo do ni a diferente do niplatina
+#glimpse(final)
+
+ final<- read_excel("GeoquimicaR_Final.xls")
+#dataframe numérico
+  final_numeric=data.frame(final$NI,final$CO,final$CU,final$ZN,final$CR)
+  names(final_numeric)= c("NI","Co","Cu","Zn","Cr")
+#outro jeito de filtar as coluas seria novodataframe=final[,c(3,6,8,9)], nesse caso estamos escolhendo apenas as colunas 3,6,8 e 9
+  final_numeric_LATLONG=final[,c(29,27,32,30,28,33,34)]
+#Lista apenas numéricos 
+ list_final_numeric=list(final$NI,final$CO,final$CU,final$ZN,final$CR)
+ names(list_final_numeric)= c("NI","Co","Cu","Zn","Cr")
+
+```
+#Tabelas sem NA
+```{r}
+#NI sem NA
+
+match(NA,final_numeric$NI) # retorna o primeiro NA
+match(NA,final_numeric$Co) # retorna o primeiro NA
+match(NA,final_numeric$Cu) # retorna o primeiro NA
+match(NA,final_numeric$Zn) # retorna o primeiro NA
+match(NA,final_numeric$Cr) # retorna o primeiro NA
+
+a=sort(final_numeric$Cr,na.last = T) # ordenei deixando os NAs no final para o Cr
+match(NA,a)
+
+Numeric_semNAeCr=data.frame(final_numeric[c(1:3368),c(1:4)]) # eliminei os valores acima de 3369, que é o primeiro valor que começa os NAs
+match(NA,Numeric_semNAeCr) # conferindo se foram eliminados
+
+NumericCr_semNA=data.frame(final_numeric[c(1:3169),5]) ###<!!!!!deu errado*********** os valores tao diferentes, testar sumary
+match(NA,NumericCr_semNA)# conferindo se foram eliminados
+
+
+# checando se há Nas
+sum(is.na(Numeric_semNAeCr))
+sum(is.na(Numeric_semNAeCr$NI))
+sum(is.na(Numeric_semNAeCr$Co))
+sum(is.na(Numeric_semNAeCr$Cu))
+sum(is.na(Numeric_semNAeCr$Zn))
+sum(is.na(NumericCr_semNA)) # ainda há
+
+####FInal_numeric_TODOS
+# por ser todos apenas 50 dados intersectam 
+final_numeric_semNA=na.omit(final_numeric) # essa função elimina as linhas que contem NA
+length(final_numeric_semNA$NI)
+sum(is.na(final_numeric_semNA))
+
+```
+
+#Tela sem Zeros - Trocandos por Na
+```{r}
+final_numeric_semZero=final_numeric
+summary(final_numeric_semZero)
+final_numeric_semZero[final_numeric_semZero==0]=NA
+summary(final_numeric_semZero)
+
+```
+
+
+
+
+
+
+
+#Separação dos outliers 
+```{r} 
+###mostrando o boxplot sem varios outliers -boxplot.stats
+
+#https://www.youtube.com/watch?v=21K9quDZCYU&ab_channel=StatisticsGlobe
+
+
+#######Para NI####
+Ni_sem_outliers=final_numeric$NI[!final_numeric$NI %in% boxplot.stats(final_numeric$NI)$out]    # Remove outliers
+#o " ! " é um operado booleano que significa não
+# O %in% é utilizado para identificar um elemento
+
+Ni_outliers=boxplot.stats(final_numeric$NI)$out # Outliers do Ni
+
+
+length(Ni_Platina_espectros$NI) - length(Ni_sem_outliers)   # Count samples without outliers
+length(Ni_sem_outliers)#numero de outliers
+
+par(mfrow = c(2, 2))
+boxplot(Ni_sem_outliers) #  Create boxplot without outliers
+boxplot(Ni_outliers)     #esses sao os outliers
+
+#normal para comparação
+boxplot(Ni_Platina_espectros$NI)
+
+#######################Para CO#########
+Co_sem_outliers=final_numeric$Co[!final_numeric$Co %in% boxplot.stats(final_numeric$Co)$out]
+
+Co_outliers=boxplot.stats(final_numeric$Co)$out
+
+par(mfrow = c(2, 2))
+boxplot(Co_sem_outliers) # esses sao os outliers
+boxplot(Co_outliers)
+boxplot(Ni_Platina_espectros$CO)#normal para comparação
+
+#######################Para Cu#########
+Cu_sem_outliers=final_numeric$Cu[!final_numeric$Cu %in% boxplot.stats(final_numeric$Cu)$out]
+
+Cu_outliers=boxplot.stats(final_numeric$Cu)$out
+
+par(mfrow = c(2, 2))
+boxplot(Cu_sem_outliers) 
+boxplot(Cu_outliers)
+boxplot(Ni_Platina_espectros$CU)#normal para comparação
+
+#######################Para Zn#########
+Zn_sem_outliers=final_numeric$Zn[!final_numeric$Zn %in% boxplot.stats(final_numeric$Zn)$out]
+
+Zn_outliers=boxplot.stats(final_numeric$Zn)$out
+
+par(mfrow = c(2, 2))
+boxplot(Zn_sem_outliers) 
+boxplot(Zn_outliers)
+boxplot(Ni_Platina_espectros$ZN)
+
+
+##########para Cr########3
+Cr_sem_outliers=final_numeric$Cr[!final_numeric$Cr %in% boxplot.stats(final_numeric$Cr)$out]
+
+Cr_outliers=boxplot.stats(final_numeric$Cr)$out
+
+par(mfrow = c(2, 2))
+boxplot(Cr_sem_outliers) 
+boxplot(Cr_outliers)
+
+#####shapiro teste para todos os sem outliers
+
+ggqqplot(Co_sem_outliers)
+ggqqplot(Ni_sem_outliers)
+ggqqplot(Zn_sem_outliers)
+ggqqplot(Cu_sem_outliers)
+ggqqplot(Cr_sem_outliers)
+
+shapiro.test(Co_sem_outliers)
+shapiro.test(Cu_sem_outliers)
+shapiro.test(Ni_sem_outliers)
+shapiro.test(Zn_sem_outliers)
+shapiro.test(Cr_sem_outliers)
+
+
+####Juntando em uma lista
+final_sem_outliers=list(Ni_sem_outliers,Co_sem_outliers,Cu_sem_outliers,Zn_sem_outliers,Cr_sem_outliers)
+names(final_sem_outliers)= c("NI","Co","Cu","Zn","Cr")
+
+final_outliers=list(Ni_outliers,Co_outliers,Cu_outliers,Zn_outliers,Cr_outliers)
+names(final_outliers)= c("NI","Co","Cu","Zn","Cr")
+
+##Retirando o zero
+Ni_sem_outliersEZero=Ni_sem_outliers
+Ni_sem_outliersEZero[Ni_sem_outliersEZero==0]=NA
+
+Co_sem_outliersEZero=Co_sem_outliers
+Co_sem_outliersEZero[Co_sem_outliers==0]=NA
+
+Cu_sem_outliersEZero=Cu_sem_outliers
+Cu_sem_outliersEZero[Cu_sem_outliers==0]=NA
+
+Zn_sem_outliersEZero=Zn_sem_outliers
+Zn_sem_outliersEZero[Zn_sem_outliers==0]=NA
+
+Cr_sem_outliersEZero=Cr_sem_outliers
+Cr_sem_outliersEZero[Cr_sem_outliers==0]=NA
+
+```
+
+```{r}
+#juntando em uma dataframe
+final_sem_Outliers=data.frame(Ni_sem_outliers,Co_sem_outliers,Cu_sem_outliers,Zn_sem_outliers,c)
+  names(final_numeric)= c("NI","Co","Cu","Zn","Cr")
+```
+
+
+
+
+
+#heatmap
+```{r}
+heatmap(Pearsoncor,col=colorRampPalette(brewer.pal(8,'Blues'))(8))
+legend(x='right', legend=c('min','','','','','','','max'), fill = colorRampPalette(brewer.pal(8,'Blues'))(8))
+```
+
+
+
+#Correlaçãode dos dados
+```{r}
+#creio que não posso usar a correlaçã de Pearson pois é parramétrica
+Pearsoncor=cor(final_numeric, use="complete.obs") #complete.obs é a retirada dos valroes NA
+Pearsoncor
+
+
+corrplot(Pearsoncor, method = "color", 
+         type = "upper", #mostra apenas a porção superior
+         addCoef.col = "black", # acrescenta os dados numéricos
+         order = "hclust", # ordena a correlação do maior pro menor
+         tl.col="black", # cor das letras é preta
+         tl.srt = 45 #rotação das variáveis
+         )
+         
+#hclust mostra a correlação da maior pra menor
+
+#valoror matriz
+b=rcorr(as.matrix(final_numeric))
+b
+#b$r é a matriz de correlação
+#b$p é o valor de p
+#b$n valores comparados
+
+corrplot(b$r,p.mat=b$p, sig.level = 0.005, method = "color")
+
+#por alguma razão o cor geral ta dando diferente do individual  
+#Correlações 
+cor(list_final_numeric$NI,list_final_numeric$Co,use = "complete.obs")
+
+#testando significancia
+cor.test(list_final_numeric$NI,list_final_numeric$Co,use = "complete.obs")
+
+cor(final_numeric$NI,final_numeric$Cr,use = "complete.obs")
+cor.test(list_final_numeric$NI,list_final_numeric$Cr,use = "complete.obs")
+
+cor(final_numeric$NI,final_numeric$Cu,use = "complete.obs")
+cor.test(list_final_numeric$NI,list_final_numeric$Cu,use = "complete.obs")
+
+cor(final_numeric$NI,final_numeric$Zn,use = "complete.obs")
+cor.test(list_final_numeric$NI,list_final_numeric$Zn,use = "complete.obs")
+
+
+####com spearman
+Spearcor=cor(final_numeric,method = "spearman", use="complete.obs")
+corrplot(Spearcor,
+         method = "color", 
+         type = "lower", #mostra apenas a porção superior
+         addCoef.col = "black", # acrescenta os dados numéricos
+         order = "hclust", # ordena a correlação do maior pro menor
+         tl.col="black", # cor das letras é preta
+         tl.srt = 45)
+
+
+####com Kendall
+Kendallcor=cor(final_numeric,method = "kendall", use="complete.obs")
+corrplot(Kendallcor,
+         method = "color", 
+         type = "lower", #mostra apenas a porção superior
+         addCoef.col = "black", # acrescenta os dados numéricos
+         order = "hclust", # ordena a correlação do maior pro menor
+         tl.col="black", # cor das letras é preta
+         tl.srt = 45)
+```
+
+
+#Clusterização hierarquica da correlação
+```{r}
+#####
+PearsoncorClust=hclust(dist(Pearsoncor))
+plot(PearsoncorClust)
+rect.hclust(PearsoncorClust,k=2,border=2:5)
+
+KedallcorHC=hclust(dist(Kendallcor))
+plot(KedallcorHC)
+rect.hclust(KedallcorHC,k=2,border=2:5)
+
+SpearcorHC=hclust(dist(Spearcor))
+plot(SpearcorHC)
+rect.hclust(SpearcorHC,k=2,border=2:5)
+#SpearcorHClust=cutree(SpearcorClust,k=2) #cria os clusters
+
+
+# SEMPRE tenho que escalar/normalizar os dados antes de fazer a clusterização - caso eles não estejam escalados.. por sorte tem a função 'scale()'
+#Ex:
+a=scale(final_numeric_semNA)
+ah=hclust(dist(a))
+aclust=cutree(ah,k=2) # selecionando os clusters
+
+rownames(a)=paste(final_numeric_semNA$NI, 1:dim(final_numeric_semNA)[1], sep='_') # identificando nome da linha
+fviz_cluster(list(data=a,cluster=aclust))
+table(aclust, final_numeric_semNA$NI)
+heatmap(a) # também creio que falta odenar pelo cluster
+
+#vendo algunsa dados com heatmap
+# geralmente os passos para o mapa de calor são 1-dados numericos 2- normalizar dados 3- distancia euclidiana 4-cluster 5- mapa
+l=data.matrix(scale(final_numeric_semNA))
+heatmap(l) # Tenho de fazer o heatmap com cluster # tentar fazer tirando os outliers
+```
+
+
+
+
+#boxplot com dispersão e RL
+```{r}
+RL_NixCo=lm(final$NI~final$CO)
+
+# Add boxplots to a scatterplot
+par(fig=c(0,0.8,0,0.8))
+plot(final$NI~final$CO, xlab="Co",ylab="Ni")
+abline(RL_NixCo, col='red')
+
+par(fig=c(0,0.8,0.44, 1), new=TRUE)
+boxplot(final$CO, horizontal=TRUE, axes=FALSE, col='red')
+
+par(fig=c(0.58,1,0,0.8),new=TRUE)
+boxplot(final$NI, axes=FALSE,col='green')
+mtext("Ni x Co", side=3, outer=TRUE, line=-3)
+
+#To understand this graph, think of the full graph area as going from (0,0) in the lower left corner to (1,1) in the upper right corner. The format of the fig= parameter is a numerical vector of the form c(x1, x2, y1, y2). The first fig= sets up the scatterplot going from 0 to 0.8 on the x axis and 0 to 0.8 on the y axis. The top boxplot goes from 0 to 0.8 on the x axis and 0.55 to 1 on the y axis. I chose 0.55 rather than 0.8 so that the top figure will be pulled closer to the scatter plot. The right hand boxplot goes from 0.65 to 1 on the x axis and 0 to 0.8 on the y axis. Again, I chose a value to pull the right hand boxplot closer to the scatterplot. You have to experiment to get it just right.
+
+#fig= starts a new plot, so to add to an existing plot use new=TRUE.
+
+RL_NixCr=lm(final$NI~final$CR)
+
+par(fig=c(0,0.8,0,0.8)) 
+plot(final$NI~final$CR, xlab="Cr", xlim=c(0,3000),ylab="Ni")
+abline(RL_NixCr,col='red')
+
+par(fig=c(0,0.8,0.44,1), new=TRUE)
+boxplot(final$CR, horizontal=TRUE, axes=FALSE, col='brown')
+
+par(fig=c(0.58,1,0,0.8),new=TRUE)
+boxplot(final$NI, axes=FALSE, col='green')
+mtext("Ni x Cr", side=3, outer=TRUE, line=-3)
+
+###### Nix Cu
+RL_NixCu=lm(final$NI~final$CU)
+
+par(fig=c(0,0.8,0,0.8)) 
+plot(final$NI~final$CU, xlab="Cu",ylab="Ni")
+abline(RL_NixCu,col='red')
+
+par(fig=c(0,0.8,0.44,1), new=TRUE)
+boxplot(final$CU, horizontal=TRUE, axes=FALSE, col='yellow')
+
+par(fig=c(0.58,1,0,0.8),new=TRUE)
+boxplot(final$NI, axes=FALSE,col='green')
+mtext("Ni x Cu ", side=3, outer=TRUE, line=-3)
+
+
+#########
+RL_NixZn=lm(final$NI~final$ZN)
+
+par(fig=c(0,0.8,0,0.8)) 
+plot(final$NI~final$ZN, xlab="Zn",ylab="Ni")
+abline(RL_NixZn,col='red')
+
+par(fig=c(0,0.8,0.44,1), new=TRUE)
+boxplot(final$ZN, horizontal=TRUE, axes=FALSE, col='blue')
+
+par(fig=c(0.58,1,0,0.8),new=TRUE)
+boxplot(final$NI, axes=FALSE,col='green')
+mtext("Ni x Zn ", side=3, outer=TRUE, line=-3)
+```
+
+#Testando normalidade
+```{r}
+#QQplots - testando em relação a uma distribuição normal
+#por aluma razão aqui não está mostrando as cores, porem é só jogar em outro chunk
+par(mfrow = c(3, 2))
+
+hist(final$NI,col = 'orange')
+qqnorm(final$NI)
+qqline(final$NI,col='red')
+
+hist(final$CU,col = 'yellow')
+qqnorm(final$CU)
+qqline(final$CU,col='red')
+
+hist(final$CO,col = 'red')
+qqnorm(final$CO)
+qqline(final$CO,col='red')
+
+par(mfrow = c(2, 2))
+hist(final$ZN,col = 'blue')
+qqnorm(final$ZN)
+qqline(final$ZN,col='red')
+
+hist(final$CR, col= 'green')
+qqnorm(final$CR)
+qqline(final$CR,col='red')
+
+
+#ggplot qquantikle
+ggqqplot(final$NI, ylab="Ni Quantiles")
+ggqqplot(final$CU, ylab="Cu Quantiles")
+ggqqplot(final$CO, ylab="Co Quantiles")
+ggqqplot(final$ZN, ylab="Zn Quantiles")
+ggqqplot(final$CR, ylab="Cr Quantiles")
+
+shapiro.test(final$NI)
+shapiro.test(final$CU)#Creio que dá pra normalizar
+shapiro.test(final$CO)
+shapiro.test(final$ZN) #Creio que dá pra normalizar
+shapiro.test(final$CR)
+
+par(mfrow = c(3, 2))
+ggdensity(final_numeric$NI,col = 'orange',  xlab = "Ni", add = "mean",fill = "orange")
+ggdensity(final_numeric$Cu,col = 'yellow', xlab = "Cu", add = "mean", fill = "yellow")
+ggdensity(final_numeric$Co,col = 'red', xlab = "Co", add = "mean", fill = "red")
+
+par(mfrow = c(3, 2))
+ggdensity(final_numeric$Zn,col = 'blue', xlab = "Zn", add = "mean",fill = "blue")
+ggdensity(final_numeric$Cr,col='green', xlab = "Cr", add = "mean",fill = "green")
+
+
+ggdensity(final_numeric$NI)
+ggdensity(Numeric_semNAeCr$NI)
+
+hist(final_numeric$NI,prob=T)
+lines(density(Numeric_semNAeCr$NI))
+```
+
+
+#Regressão linear # nao precisa de dados gaussianos
+```{r}
+print("RL_NixCo")
+summary(RL_NixCo)
+
+print("RL_NixCr")
+summary(RL_NixCr)
+
+print("RL_NixCu")
+summary(RL_NixCu)
+
+print("RL_NixZn")
+summary(RL_NixZn)
+
+print("RL_NixPCA")
+summary(lm(Numeric_semNAeCrcomPCA$NI~Numeric_semNAeCrcomPCA$PC1))
+```
+
+
+#Regressão multivariável # nao precisa de dados gaussianos eu acho # pesquisar função GLM
+```{r}
+#começar com uma analise e ir aumentando
+R_NixCo_Cr=lm(final$NI~final$CO*final$CR,data=final)
+summary(R_NixCo_Cr)
+
+R_NixCo_Cr2=lm(final$NI~final$CO+final$CR,data=final)
+summary(R_NixCo_Cr2)
+
+R_Ni_tds=lm(final$NI~final$CO+final$CU+final$CR+final$ZN, data=final)
+summary(R_Ni_tds)
+confint(R_Ni_tds)
+
+R_Ni_tds2=lm(final$NI~final$CO*final$CU*final$CR*final$ZN, data=final)
+summary(R_Ni_tds2)
+#confint(R_Ni_tds2)
+
+R_NixCo_Cr_Zn=lm(final$NI~final$CO+final$CR+final$ZN, data=final)
+summary(R_NixCo_Cr_Zn)
+#confint(R_NixCo_Cr_Zn)
+
+R_NixCo_Zn=lm(final$NI~final$CO+final$ZN, data=final)
+summary(R_NixCo_Zn)
+#confint(R_NixCo_Zn)
+
+R_NixCo_Zn2=lm(final$NI~final$CO*final$ZN, data=final)
+summary(R_NixCo_Zn2)
+
+R_NixCr_cu=lm(final$NI~final$CU+final$CR, data=final)
+summary(R_NixCr_cu)
+#confint(R_NixCr_cu)
+
+```
+
+
+#Predizendo o Ni em áres com Cr
+```{r}
+#selecionando áreas exclusivamentes com Cr
+Only_Cr=final_numeric_LATLONG
+
+length(na.omit(Only_Cr$CR)) #length desired
+Only_Cr=Only_Cr[order(Only_Cr$CR, decreasing=TRUE),] # ordenei deixando os NAs no final para o Cr
+
+Only_Cr=Only_Cr[c(1:3169),] #Deletando linhas sem Cr
+length(Only_Cr$POINT_Y) # conferirndo comprimento das colunas
+
+#Agora vou deletar as linhas onde tem se tem valor de Ni
+Only_Cr=Only_Cr[order(Only_Cr$NI, decreasing=TRUE),] # ordenei deixando os NAs no final para o Cr
+
+# eu sei que as 50 primeras linhas tem Ni, vou deletá-las
+Only_Cr=Only_Cr[c(51:3169),] #Deletando linhas com NI
+
+
+#aplicar a regressão linear, cuja formula foi f(x)=-310.8846+2.7816Cr
+Ni_RL=Only_Cr
+Ni_RL[,1]=-310.8846+2.7816*Only_Cr$CR
+
+#Normalizar os valores de Ni para compara com o Ni normal(o qual tambem terá de ser normalizado)- (X-Xmax)/(Xmax-xMin)
+Ni_RL[,1]=(Ni_RL[,1]-max(Ni_RL[,1]))/(max(Ni_RL[,1])-min(Ni_RL[,1]))
+
+summary(Ni_RL[,1])
+
+#plot(final_numeric_LATLONG$CR)
+
+#falta converter para sf, exportar e comparar
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+sf_Ni_RL=st_as_sf(x=Ni_RL, coords = c("POINT_X", "POINT_Y"), crs= projcrs)
+
+setwd("C:/Users/pc/Desktop/td/sf_write")#exportar
+st_write(sf_Ni_RL, dsn= "RL_NI.shp", driver= "ESRI Shapefile")
+```
+
+#Regressão multipla 3 dados 
+```{r}
+teste=lm(final$NI ~ final$CO + final$CR)
+a=scatterplot3d(final$NI ~ final$CO + final$CR, pch=16,angle=20,color='steelblue', box=F)
+a$plane3d(teste, draw_polygon = T)
+```
+
+#Para comparar a ifluencia de cada variável (mesmo com unidades diferentes) se utilzia o coeficiente padronizado #https://www.youtube.com/watch?v=4YLOwyx_hxo&ab_channel=FernandaPeres 32min
+# comp. modelos
+```{r}
+lm.beta(R_Ni_tds)
+lm.beta(R_NixCo_Cr2)
+
+#Felipe vc tem de entender esse coeficiente logo
+
+
+
+#Além do R² , pode se utilizar as seguintes funções para comparação de modelos. Nesse caso, visando o menor valor
+AIC(R_Ni_tds,R_Ni_tds2)
+BIC(R_Ni_tds,R_Ni_tds2)
+```
+
+#anova <<<<< Não posso utilziar já que meus dados não sao normais
+```{r}
+#AOV nao se importa tanto om predição mas mostra a releância estatística
+AOV=aov(final$NI~final$CO+final$CU+final$CR+final$ZN, data=final)
+summary(AOV)
+
+AOV2=aov(final$NI~final$CO*final$CU*final$CR*final$ZN, data=final)
+summary(AOV2)
+#creio q as intereções nao sao necessárias já temos mais alto pr>f 
+```
+
+
+#ANOVA (kruskal-wallis test) <--- Para dados não paraméricos
+
+
+#Power transformation (Creio que é boxplot?)
+```{r}
+#########Para o Ni####
+#1/x^2
+lambda= bcPower(Ni_Platina_espectros$NI,-2)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "1/x^2")
+
+#1/x Transformaçao reciproco inverso
+lambda= bcPower(Ni_Platina_espectros$NI,-1)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "reciproco inverso")
+
+#1/sqrtX Transformaçao Raiz quadrada reciproco
+lambda= bcPower(Ni_Platina_espectros$NI,-0.5)
+shapiro.test(lambda)
+ggqqplot(lambda)
+
+#log(x) #transforamção log natural
+lambda= bcPower(Ni_Platina_espectros$NI,0)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "log natural")
+
+#x
+lambda= bcPower(Ni_Platina_espectros$NI,0.15)
+shapiro.test(lambda)
+ggqqplot(lambda)
+
+#log(x) #Qurta transformação raíz
+lambda= bcPower(Ni_Platina_espectros$NI,0.25)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "raiz")
+
+#log(x) #transforamção de raiz cúbica
+lambda= bcPower(Ni_Platina_espectros$NI,0.33)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "raíz cúbicca")
+
+#logsqrtx Transformaçaõ de raiz quadrada
+lambda= bcPower(Ni_Platina_espectros$NI,0.5)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "logquadrado")
+
+#x Sem transformação
+lambda= bcPower(Ni_Platina_espectros$NI,1)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "sem transformação")
+
+#x^2
+lambda= bcPower(Ni_Platina_espectros$NI,2)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "X^2")
+
+
+###############teste box cox###########
+print("boxCox")
+# Note que os zeros foram retiradas pois para esse análise não pode número zero ou negativo
+
+###Para o Ni####
+print("Ni")
+res=boxCox(final_numeric_semZero$NI~1,lambda = seq(-3,3, length=100))
+res$x[which.max(res$y)]
+lambda= bcPower(final_numeric_semZero$NI,-0.272)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Ni")
+
+#####para Cr####
+print("Cr")
+a=boxCox(final_numeric_semZero$Cr~1,lambda = seq(-3,3, length=100))
+a$x[which.max(a$y)]
+lambda= bcPower(final_numeric_semZero$Cr,-0.393)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cr")
+
+###para Co        
+print("Co")
+a=boxCox(final_numeric_semZero$Co~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(final_numeric_semZero$Co,0.212)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Co")
+
+###para Cu
+print("Cu")
+a=boxCox(final_numeric_semZero$Cu~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(final_numeric_semZero$Cu,0.454)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cu")
+
+###para Zn
+#aparentemente sem os outliers esse fica transformado
+print("Zn")
+a=boxCox(final_numeric_semZero$Zn~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(final_numeric_semZero$Zn,0.515)
+shapiro.test(lambda)
+ggqqplot(lambda, title = "Zn")
+
+```
+```{r}
+#Para outliers
+
+###############teste box cox###########
+print("boxCox")
+# Note que os zeros foram retiradas pois para esse análise não pode número zero ou negativo
+
+###Para o Ni####
+print("Ni")
+res=boxCox(Ni_sem_outliersEZero~1,lambda = seq(-3,3, length=100))
+res$x[which.max(res$y)]
+lambda= bcPower(Ni_sem_outliersEZero,0.454)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Ni")
+
+#####para Cr####
+print("Cr")
+a=boxCox(Cr_sem_outliersEZero~1,lambda = seq(-3,3, length=100))
+a$x[which.max(a$y)]
+lambda= bcPower(Cr_sem_outliersEZero,0.09)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cr")
+
+###para Co        
+print("Co")
+a=boxCox(Co_sem_outliersEZero~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(Co_sem_outliersEZero,0.878)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Co")
+
+###para Cu
+print("Cu")
+a=boxCox(Cu_sem_outliersEZero~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(Cu_sem_outliersEZero,0.69)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cu")
+
+###para Zn
+print("Zn")
+a=boxCox(Zn_sem_outliersEZero~1,lambda = seq(-3,3, 0.001))
+a$x[which.max(a$y)]
+lambda= bcPower(Zn_sem_outliersEZero,0.69)
+shapiro.test(lambda)
+ggqqplot(lambda, title = "Zn")
+
+
+###https://r-coder.com/box-cox-transformation-r/
+a=boxCox(lm(Zn_sem_outliersEZero~1))
+a$x[which.max(a$y)]
+lambda= bcPower(Zn_sem_outliersEZero,a$x[which.max(a$y)])
+shapiro.test(lambda)
+
+a=boxCox(lm(Cu_sem_outliersEZero~1))
+a$x[which.max(a$y)]
+lambda= bcPower(Cu_sem_outliersEZero,0.707)
+shapiro.test(lambda)
+ggqqplot(lambda,title = "Cu")
+```
+
+#PCA
+```{r}
+pca_tds_semNaeCr=prcomp(Numeric_semNAeCr)
+pca_tds_semNaeCr
+
+fviz_eig(pca_tds_semNaeCr)
+fviz_pca_ind(pca_tds_semNaeCr)
+fviz_pca_ind(pca_tds_semNaeCr,col.ind = 'cos2')
+
+fviz_pca_ind(pca_tds_semNaeCr,addEllipses = T)
+fviz_pca_ind(pca_tds_semNaeCr,col.ind = 'contrib')
+
+fviz_pca_var(pca_tds_semNaeCr,col.ind = 'contrib')
+fviz_pca_var(pca_tds_semNaeCr,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+fviz_pca_biplot(pca_tds_semNaeCr,col.ind = 'contrib')
+
+
+d=Numeric_semNAeCr[,c(-1)]
+names(d)
+pca_semNieCr=prcomp(d)
+pca_semNieCr
+fviz_eig(pca_semNieCr)
+fviz_pca_ind(pca_semNieCr,addEllipses = T)
+
+fviz_pca_var(pca_semNieCr,col.ind = 'contrib')
+
+###
+kpca$groups=as.factor(kgroups$cluster)
+fviz_pca_ind(pca_semNieCr,addEllipses = T, col.ind = kpca$groups)
+
+
+
+#### para todos os valores juntos - Apenas 50 amostras
+pca_tds_semNA=prcomp(final_numeric_semNA)
+pca_tds_semNA
+
+fviz_eig(pca_tds_semNA)
+fviz_pca_ind(pca_tds_semNA) # os valores mostrados correspondem as linhas
+fviz_pca_var(pca_tds_semNA,col.var = 'contrib', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+
+
+
+####para todos sem Ni e Cr
+a=Numeric_semNAeCr[,2:4]
+pca_CoCuZn=prcomp(a)
+
+b=final_numeric_semNA[,2:5]
+pca_CoCuZnCR=prcomp(b)
+
+####
+## aqui vou juntar as colunas e tentar fazer o PCA
+Numeric_semNAeCrcomPCA=merge(Numeric_semNAeCr, pca_CoCuZn$x, by = "row.names", all = TRUE)# parece q ele criou uma nova coluna.. sei não.. nao era pra acontecer disso.
+
+nrow(Numeric_semNAeCr)
+class(Numeric_semNAeCr)
+
+nrow(pca_CoCuZn$x)
+class(pca_CoCuZn$x)
+
+nrow(Numeric_semNAeCrcomPCA)
+
+## ver por que aumentou o número de linhas.. isso esta fazendo dar erraado lm
+summary(lm(Numeric_semNAeCrcomPCA$NI~Numeric_semNAeCrcomPCA$PC2))
+
+summary(lm(Numeric_semNAeCrcomPCA$NI~Numeric_semNAeCrcomPCA$PC2+Numeric_semNAeCrcomPCA$Co+Numeric_semNAeCrcomPCA$Cu+Numeric_semNAeCrcomPCA$Zn))
+```
+
+```{r}
+# adicionando PCA no sf
+
+NumericLatLong_semNAeCr=data.frame(final_numeric_LATLONG[c(1:3368),c(1:4,6,7)]) # eliminei os valores acima de 3369, que é o primeiro valor que começa os NAs. Também eliminei o Cr
+match(NA,NumericLatLong_semNAeCr) # conferindo se foram eliminados
+
+projcrs <- "+proj=utm +zone=22 +south +datum=WGS84 +units=m +no_defs" # escolhendo projeção
+
+NumericLatLong_semNAeCr=NumericLatLong_semNAeCr[order(NumericLatLong_semNAeCr$NI, decreasing=F),] # ordenei deixando Ni no Topo
+
+sf_NumericLatLong_semNAeCr=st_as_sf(x=NumericLatLong_semNAeCr, coords = c("POINT_X", "POINT_Y"), crs= projcrs) # conertendo para sf
+
+sf_NumericLatLong_semNAeCr[,6]=(pca_tds_semNaeCr$x[,1]) # Adicionando PC1
+# e se eu tentar fazer a oca com o sf
+names(sf_NumericLatLong_semNAeCr)[names(sf_NumericLatLong_semNAeCr) == 'V6'] <- 'PC1' # trocando nome de uma coluna
+#names(df) looks into all the names in the df
+#[names(df) == old.var.name] extracts the variable name you want to check
+
+setwd("C:/Users/pc/Desktop/td/sf_write")#exportar
+st_write(sf_NumericLatLong_semNAeCr, dsn= "PC1_semCr.shp", driver= "ESRI Shapefile")
+
+
+####Agora para a PC1 sem o com o Cr, o problema desta é que o Cr está mais relevante que o Co e não é assim
+
+final_numericLATLONG_semNA=na.omit(final_numeric_LATLONG) # essa função elimina as linhas que contem NA
+length(final_numericLATLONG_semNA$POINT_X)
+sum(is.na(final_numericLATLONG_semNA))
+
+final_numericLATLONG_semNA=final_numericLATLONG_semNA[order(final_numericLATLONG_semNA$NI, decreasing=F),] # ordenei deixando Ni no Topo
+
+sf_final_numericLATLONG_semNA=st_as_sf(x=final_numericLATLONG_semNA, coords = c("POINT_X", "POINT_Y"), crs= projcrs) # conertendo para sf
+
+sf_final_numericLATLONG_semNA[,7]=(pca_tds_semNA$x[,1]) # Adicionando PC1
+names(sf_final_numericLATLONG_semNA)[names(sf_final_numericLATLONG_semNA) == "...7" ] <- "PC1" # trocando nome de uma coluna
+
+setwd("C:/Users/pc/Desktop/td/sf_write")#exportar
+st_write(sf_final_numericLATLONG_semNA, dsn= "PC1_comCR.shp", driver= "ESRI Shapefile")
+```
+
+tentando exportar pca 
+```{r}
+##https://rpubs.com/chrisbrunsdon/99675
+#transformando em data frame
+
+library(sfheaders)
+library(mvoutlier)
+
+Lbasin.dataframe=sf_to_df(Lbasin)
+Lbasin.dataframe=Lbasin.dataframe[,c(4:5)]
+
+#é praficar assim:
+data(bsstop)
+data(bss.background)
+class(bss.background)
+head(bss.background)
+
+#plotando
+plot(Lbasin.dataframe,asp=1,type='l',xaxt='n',yaxt='n',xlab='',ylab='',bty='n',col='grey')
+
+
+#Pca
+pca <- princomp(Numeric_semNAeCr,cor=F,scores=T) #
+pca$loadings
+
+#
+backdrop <- function() plot(Lbasin.dataframe,asp=1,type='l',xaxt='n',yaxt='n',xlab='',ylab='',bty='n',col='grey')
+#
+pc1 <- pca$scores[,1]
+
+NumericLatLong_semNAeCr=NumericLatLong_semNAeCr[order(NumericLatLong_semNAeCr$NI, decreasing=F),] # ordenei deixando Ni no Topo
+
+backdrop()
+points(NumericLatLong_semNAeCr$POINT_X[pc1>10],NumericLatLong_semNAeCr$POINT_Y[pc1>10],pch=16,col='blue') # aqui coloco as coordenadas dos pontos
+points(NumericLatLong_semNAeCr$POINT_X[pc1<0],NumericLatLong_semNAeCr$POINT_Y[pc1<0],pch=16,col='red')
+
+
+```
+
+#Agrupamento
+```{r}
+#kmeans(Numeric_semNAeCr,3)
+
+#kmeans com PCA
+kpca=data.frame(pc1=pca_tds_semNaeCr$x[,1], pc2= pca_tds_semNaeCr$x[,2]) # criar tabela com o resultado do PCA
+kgroups=kmeans(kpca,3) # realizando o Kmeans  
+kpca$groups=as.integer(kgroups$cluster) # resultado do agrupamento adicionado ao PCA
+
+
+g=ggplot(kpca)
+g=g+geom_point(aes(x=pc1,y=pc2,color=groups))
+g
+
+
+fviz_cluster(kgroups,data=kpca)
+
+###### para pca com 50 dados INCLUINDO o Ni
+
+kpca2=data.frame(pc1=pca_tds_semNA$x[,1], pc2= pca_tds_semNA$x[,2]) # criar tabela com o resultado do PCA
+kgroups2=kmeans(kpca2,3)
+kpca2$groups=as.integer(kgroups2$cluster)
+
+g=ggplot(kpca2)
+g=g+geom_point(aes(x=pc1,y=pc2,color=groups))
+g
+
+fviz_cluster(kgroups2,data=kpca2)
+
+
+```
+
+#Outliers
+```{r}
+summary(Ni_Platina_espectros$NI)
+IQR=43-18
+cat('IQR =',IQR)
+
+Limite_outliers=43+(IQR*3)
+print('')
+cat("Limite_outliers =",Limite_outliers )
+
+print('')
+extremos_outliers=length(Ni_Platina_espectros$NI[Ni_Platina_espectros$NI>Limite_outliers])
+cat('número de outliers extremos=', extremos_outliers)
+
+print('')
+Num_out_extrem_utilizados= 0.1*extremos_outliers
+cat('Serão utilizados como treinamento um total de 10%=',Num_out_extrem_utilizados)
+```
+
+
+
+```{r}
+
+
+
+-----------
+
+
+# O Cr esyá igual tbm?? o problema está no NI então 
+Cr_ORIG_E_RL_norm_semNA=Cr_ORIG_E_RL_norm_semNA[order(Cr_ORIG_E_RL_norm_semNA$CR, decreasing=F),] #ordenando com o Ni crescente
+CrNI_ORIG_E_RL_semNA_norm=CrNI_ORIG_E_RL_semNA_norm[order(CrNI_ORIG_E_RL_semNA_norm$CR, decreasing=F),] #ordenando com o Ni crescente
+Cr_ORIG_E_RL_norm_semNA$CR==CrNI_ORIG_E_RL_semNA_norm$CR
+
+
+Cr_ORIG_E_RL_norm_semNA=Cr_ORIG_E_RL_norm_semNA[order(Cr_ORIG_E_RL_norm_semNA$NI, decreasing=F),] #ordenando com o Ni crescente
+CrNI_ORIG_E_RL_semNA_norm=CrNI_ORIG_E_RL_semNA_norm[order(CrNI_ORIG_E_RL_semNA_norm$NI, decreasing=F),] #ordenando com o Ni crescente
+
+Cr_ORIG_E_RL_norm_semNA$NI==CrNI_ORIG_E_RL_semNA_norm$NI
+# aPENAS O NI ESTÁ DIFERENTE, DESCOBRIR O PORQUÊ TEREI
+
+summary(Cr_ORIG_E_RL_norm_semNA$NI)
+summary(CrNI_ORIG_E_RL_semNA_norm$NI)
+summary(CrNI_ORIG_E_RL$NI)
+
+```
+
