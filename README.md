@@ -16,4 +16,4 @@ Este é o conjunto de análises estatísticas realizadas em dados de sedimento d
 - Regressão Linear
 - Análise de Componentes Principais
 
-
+Esse projeto foi realizado entre 2021-2023, escrito em R markdown
